@@ -9,7 +9,6 @@ import yfinance as yf
 import numpy as np
 import time
 import logging
-import concurrent.futures
 
 # Списки активов (500 акций, 50 криптовалют)
 stock_tickers = [
@@ -27,13 +26,14 @@ crypto_ids = [
     "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
 ] + [f"CRYPTO{i:04d}" for i in range(30)]
 
-# Новый дизайн в стиле чат-бота
+# Красивый шаблон дизайна
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
     .stApp {
-        background: #000;
-        color: #fff;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: #e0e0e0;
         height: 100vh;
         display: flex;
         justify-content: center;
@@ -41,54 +41,70 @@ st.markdown("""
         overflow: hidden;
     }
     .stContainer {
-        background: rgba(0, 0, 0, 0.9);
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
         padding: 40px;
-        border-radius: 10px;
+        border-radius: 15px;
         text-align: center;
         max-width: 600px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .stSelectbox > div {
         justify-content: center;
     }
     .stButton > button {
-        background: #333;
+        background: #4a90e2;
         color: #fff;
         border: none;
-        border-radius: 5px;
-        padding: 10px 20px;
-        font-size: 1em;
-        transition: background 0.3s;
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-size: 1.1em;
+        font-weight: 500;
+        transition: transform 0.2s, background 0.2s;
     }
     .stButton > button:hover {
-        background: #555;
+        transform: translateY(-2px);
+        background: #357abd;
     }
     .css-1aumxhk {
         width: 100%;
     }
     h1, h2, h3 {
         color: #fff;
+        font-family: 'Poppins', sans-serif;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     table {
         margin: 20px auto;
         border-collapse: collapse;
-        background: #222;
-        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
     }
     th, td {
-        padding: 8px;
-        border: 1px solid #444;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
     th {
-        background: #333;
+        background: rgba(255, 255, 255, 0.15);
     }
     .stSpinner > div {
-        display: none;
+        background: #4a90e2;
+        border: 4px solid #e0e0e0;
+        border-top: 4px solid #4a90e2;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
     }
-    .custom-spinner {
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .stSpinner {
         text-align: center;
         color: #fff;
-        font-size: 1.2em;
+        font-size: 1.1em;
     }
     ::-webkit-scrollbar {
         display: none;
@@ -102,7 +118,7 @@ TELEGRAM_BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
 ADMIN_KEY = st.secrets.get("ADMIN_KEY", "mysecretkey123")
 
 # Кэширование данных
-@st.cache_data(ttl=3600)  # Увеличен TTL для ускорения
+@st.cache_data(ttl=3600)
 def fetch_stock_data_cached(ticker, interval="1d", period="1y"):
     try:
         stock = yf.Ticker(ticker)
@@ -152,15 +168,12 @@ def fetch_stock_fundamentals(ticker):
     except:
         return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "sector": "Другое", "current_price": None}
 
-def fetch_data_parallel(tickers, fetch_func):
+def fetch_data_sequential(tickers, fetch_func):
     df_list = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_ticker = {executor.submit(fetch_func, ticker): ticker for ticker in tickers}
-        for future in concurrent.futures.as_completed(future_to_ticker):
-            ticker = future_to_ticker[future]
-            df = future.result()
-            if df is not None:
-                df_list.append((ticker, df))
+    for ticker in tickers:
+        df = fetch_func(ticker)
+        if df is not None:
+            df_list.append((ticker, df))
     return df_list
 
 def analyze_strategy_day_trade(df_list, market):
@@ -221,23 +234,20 @@ def analyze_strategy_day_trade(df_list, market):
     st.write("Финансовый анализ завершен")
     if st.button("Посмотреть отчёт"):
         with st.expander("Финансовая визуализация", expanded=True):
-            # График 1: Процесс фильтрации акций
             fig_process = go.Figure(data=[go.Bar(x=['Начальный пул акций', 'Базовый фильтр', 'Высокая волатильность', 'Умеренная волатильность', 'Финальный выбор'],
                                                y=[len(df_list), len(filtered), sum(1 for x in filtered if x[3] > 5), sum(1 for x in filtered if 2 <= x[3] <= 5), 15])])
             fig_process.update_layout(title="Процесс фильтрации акций", template="plotly_dark")
             st.plotly_chart(fig_process, use_container_width=True)
             
-            # График 2: Распределение ATR%
             fig_atr = go.Figure()
-            fig_atr.add_trace(go.Histogram(x=atr_data, name="ATR%", nbinsx=20))
+            fig_atr.add_trace(go.Histogram(x=[x[3] for x in filtered], name="ATR%", nbinsx=20))
             fig_atr.add_hline(y=2, line_dash="dash", line_color="green", annotation_text="2% Threshold")
             fig_atr.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="5% Threshold")
             fig_atr.update_layout(title="Распределение ATR% всех отфильтрованных акций", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
             st.plotly_chart(fig_atr, use_container_width=True)
             
-            # График 3: Топ-15 по рыночной капитализации
             fig_top15 = go.Figure(data=[go.Bar(x=[x[0] for x in top_15], y=[x[6]/1e12 for x in top_15])])
-            fig_top15.update_layout(title="Финальный выбор: Топ-15 акций по рыночной капитализации (с умеренной волатильностью)", xaxis_title="Тикер", yaxis_title="Капитализация ($T)", template="plotly_dark")
+            fig_top15.update_layout(title="Финальный выбор: Топ-15 акций по рыночной капитализации", xaxis_title="Тикер", yaxis_title="Капитализация ($T)", template="plotly_dark")
             st.plotly_chart(fig_top15, use_container_width=True)
             
             st.subheader("Финансовые показатели")
@@ -339,11 +349,11 @@ with st.container():
 
     df_list = None
     if st.button(f"🚀 Запустить {strategy}", key="run_button"):
-        with st.spinner('<div class="custom-spinner">Выполняется анализ... Пожалуйста, подождите.</div>', unsafe_allow_html=True):
+        with st.spinner("Выполняется анализ... Пожалуйста, подождите."):
             if market == "Акции":
-                df_list = fetch_data_parallel(stock_tickers[:500], fetch_stock_data_cached)
+                df_list = fetch_data_sequential(stock_tickers[:500], fetch_stock_data_cached)
             else:
-                df_list = fetch_data_parallel(crypto_ids[:50], fetch_crypto_data)
+                df_list = fetch_data_sequential(crypto_ids[:50], fetch_crypto_data)
         
         if not df_list:
             st.error("🚨 Нет данных для анализа. Проверьте подключение или тикеры.")
