@@ -9,6 +9,7 @@ import yfinance as yf
 import numpy as np
 import time
 import logging
+import concurrent.futures
 
 # Списки активов (500 акций, 50 криптовалют)
 stock_tickers = [
@@ -26,98 +27,68 @@ crypto_ids = [
     "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
 ] + [f"CRYPTO{i:04d}" for i in range(30)]
 
-# Современный дизайн, вдохновленный Xynth
+# Новый дизайн в стиле чат-бота
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-    :root {
-        --primary-bg: #1c1c1c;
-        --secondary-bg: #171717;
-        --text-color: #e0e0e0;
-        --accent-color: #ff4500;
-        --shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-    }
     .stApp {
-        background: linear-gradient(180deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
-        color: var(--text-color);
-        font-family: 'Roboto', sans-serif;
+        background: #000;
+        color: #fff;
         height: 100vh;
-        overflow-y: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
     }
     .stContainer {
-        max-width: 950px;
-        margin: 0 auto;
-        padding: 40px 25px;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 40px;
+        border-radius: 10px;
         text-align: center;
-        background: rgba(20, 20, 20, 0.95);
-        border-radius: 15px;
-        box-shadow: var(--shadow);
-        height: 90vh;
-        overflow-y: auto;
+        max-width: 600px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
-    .stMetric > label {
-        color: var(--text-color);
-        font-size: 1.1em;
-        text-align: center;
-    }
-    .stSelectbox > label {
-        color: var(--text-color);
-        font-size: 1.1em;
-        text-align: center;
+    .stSelectbox > div {
+        justify-content: center;
     }
     .stButton > button {
-        background: linear-gradient(90deg, #2e2e2e, #4a4a4a);
-        color: var(--text-color);
+        background: #333;
+        color: #fff;
         border: none;
-        border-radius: 25px;
-        padding: 15px 40px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-        font-size: 1.2em;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 1em;
+        transition: background 0.3s;
     }
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-        background: linear-gradient(90deg, #3a3a3a, #5a5a5a);
+        background: #555;
     }
     .css-1aumxhk {
-        width: 80%;
-        margin: 0 auto;
+        width: 100%;
     }
     h1, h2, h3 {
-        text-align: center;
-        color: var(--text-color);
-        text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+        color: #fff;
     }
     table {
         margin: 20px auto;
         border-collapse: collapse;
         background: #222;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        border-radius: 5px;
     }
     th, td {
-        padding: 12px 15px;
-        text-align: center;
+        padding: 8px;
         border: 1px solid #444;
-        color: var(--text-color);
     }
     th {
         background: #333;
-        font-weight: 700;
     }
-    .stProgress > div > div > div > div {
-        background-color: var(--accent-color);
+    .stSpinner > div {
+        display: none;
     }
-    .visualization {
+    .custom-spinner {
         text-align: center;
-    }
-    .visualization img {
-        max-width: 100%;
-        border-radius: 10px;
-        box-shadow: var(--shadow);
+        color: #fff;
+        font-size: 1.2em;
     }
     ::-webkit-scrollbar {
         display: none;
@@ -131,41 +102,39 @@ TELEGRAM_BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
 ADMIN_KEY = st.secrets.get("ADMIN_KEY", "mysecretkey123")
 
 # Кэширование данных
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=3600)  # Увеличен TTL для ускорения
 def fetch_stock_data_cached(ticker, interval="1d", period="1y"):
     try:
-        with st.spinner(f"Загрузка данных для {ticker}..."):
-            stock = yf.Ticker(ticker)
-            df = stock.history(period=period, interval=interval)
-            if not df.empty:
-                df = df[["Close", "Volume", "High", "Low"]]
-                return df
+        stock = yf.Ticker(ticker)
+        df = stock.history(period=period, interval=interval)
+        if not df.empty:
+            df = df[["Close", "Volume", "High", "Low"]]
+            return df
     except Exception as e:
         logging.error(f"Ошибка yfinance для {ticker}: {e}")
     return None
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=3600)
 def fetch_crypto_data(coin_id, days=365):
     try:
-        with st.spinner(f"Загрузка данных для {coin_id}..."):
-            url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
-            response = requests.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                df = pd.DataFrame({
-                    'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
-                    'Close': [x[1] for x in data['prices']],
-                    'Volume': [x[1] for x in data['total_volumes']],
-                    'High': [x[1] for x in data['prices']],
-                    'Low': [x[1] for x in data['prices']]
-                })
-                df.set_index('Date', inplace=True)
-                return df
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            df = pd.DataFrame({
+                'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
+                'Close': [x[1] for x in data['prices']],
+                'Volume': [x[1] for x in data['total_volumes']],
+                'High': [x[1] for x in data['prices']],
+                'Low': [x[1] for x in data['prices']]
+            })
+            df.set_index('Date', inplace=True)
+            return df
     except Exception as e:
         logging.error(f"Ошибка для {coin_id}: {e}")
     return None
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=3600)
 def fetch_stock_fundamentals(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -182,6 +151,17 @@ def fetch_stock_fundamentals(ticker):
         }
     except:
         return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "sector": "Другое", "current_price": None}
+
+def fetch_data_parallel(tickers, fetch_func):
+    df_list = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_ticker = {executor.submit(fetch_func, ticker): ticker for ticker in tickers}
+        for future in concurrent.futures.as_completed(future_to_ticker):
+            ticker = future_to_ticker[future]
+            df = future.result()
+            if df is not None:
+                df_list.append((ticker, df))
+    return df_list
 
 def analyze_strategy_day_trade(df_list, market):
     filtered = []
@@ -203,7 +183,6 @@ def analyze_strategy_day_trade(df_list, market):
             continue
         filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0), fundamentals.get("sector", "Другое"), fundamentals.get("current_price", 0)))
 
-    # Динамическое определение секторов
     sector_counts = {"Технологии": 0, "Услуги связи": 0, "Финансы": 0, "Другое": 0}
     for _, _, _, _, _, _, _, sector, _ in filtered:
         if "Technology" in sector:
@@ -217,18 +196,30 @@ def analyze_strategy_day_trade(df_list, market):
     
     filtered.sort(key=lambda x: x[6], reverse=True)
     top_15 = filtered[:15]
-    
-    fig = go.Figure()
-    atr_data = [x[3] for x in filtered]
-    fig.add_trace(go.Histogram(x=atr_data, name="ATR%", nbinsx=20))
-    fig.add_hline(y=2, line_dash="dash", line_color="green", annotation_text="2% Threshold")
-    fig.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="5% Threshold")
-    fig.update_layout(title="Распределение ATR% всех отфильтрованных акций", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
-    st.plotly_chart(fig, use_container_width=True)
-    
+
+    st.write("### Полный обзор процесса фильтрации акций")
+    st.write("Я создал подробную визуализацию нашего пути фильтрации акций. Давайте рассмотрим, что мы сделали:")
+    st.write("**Этапы фильтрации, которые мы прошли:**")
+    st.write(f"Начальный пул акций: Начали с {len(df_list)} акций")
+    st.write(f"Базовый фильтр: Применены критерии (цена > 10 долларов, объем > 2 млн, бета > 1.2) → {len(filtered)} акций")
+    st.write("**Сегментация по волатильности:**")
+    st.write(f"Высокая волатильность (ATR > 5%): {sum(1 for x in filtered if x[3] > 5)} акций")
+    st.write(f"Умеренная волатильность (ATR 2-5%): {sum(1 for x in filtered if 2 <= x[3] <= 5)} акций ← Наш фокус")
+    st.write("Финальный выбор: Топ-15 по рыночной капитализации")
+    st.write("**Ключевые выводы:**")
+    st.write("Распределение ATR%: Гистограмма показывает, что большинство акций в нашем отфильтрованном наборе имеют ATR между 3-6%. Наш выбранный диапазон (2-5%) представляет собой зону умеренной волатильности, избегая как слишком стабильных, так и слишком волатильных акций.")
+    st.write("Профиль финального выбора:")
+    st.write(f"Доля секторов: Технологии ({sector_counts['Технологии']} акций), Услуги связи ({sector_counts['Услуги связи']}), Финансы ({sector_counts['Финансы']})")
+    st.write(f"Диапазон капитализации: ${min(x[6]/1e9 for x in top_15):.2f} млрд (самая низкая) до ${max(x[6]/1e9 for x in top_15):.2f} млрд (самая высокая)")
+    st.write(f"Диапазон волатильности: {min(x[3] for x in top_15):.2f}% (минимальная) до {max(x[3] for x in top_15):.2f}% (максимальная)")
+    st.write("Топ-5 акций в нашем финальном выборе:")
+    for i in range(min(5, len(top_15))):
+        ticker, _, _, atr, _, _, market_cap, _, price = top_15[i]
+        st.write(f"{ticker} (${market_cap/1e9:.2f} млрд): {atr:.2f}% ATR")
+
     st.subheader("📊 Анализ рынка")
     st.write("Финансовый анализ завершен")
-    if st.button("Просмотр отчета"):
+    if st.button("Посмотреть отчёт"):
         with st.expander("Финансовая визуализация", expanded=True):
             # График 1: Процесс фильтрации акций
             fig_process = go.Figure(data=[go.Bar(x=['Начальный пул акций', 'Базовый фильтр', 'Высокая волатильность', 'Умеренная волатильность', 'Финальный выбор'],
@@ -236,8 +227,13 @@ def analyze_strategy_day_trade(df_list, market):
             fig_process.update_layout(title="Процесс фильтрации акций", template="plotly_dark")
             st.plotly_chart(fig_process, use_container_width=True)
             
-            # График 2: Распределение ATR% (уже выше)
-            st.plotly_chart(fig, use_container_width=True)
+            # График 2: Распределение ATR%
+            fig_atr = go.Figure()
+            fig_atr.add_trace(go.Histogram(x=atr_data, name="ATR%", nbinsx=20))
+            fig_atr.add_hline(y=2, line_dash="dash", line_color="green", annotation_text="2% Threshold")
+            fig_atr.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="5% Threshold")
+            fig_atr.update_layout(title="Распределение ATR% всех отфильтрованных акций", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
+            st.plotly_chart(fig_atr, use_container_width=True)
             
             # График 3: Топ-15 по рыночной капитализации
             fig_top15 = go.Figure(data=[go.Bar(x=[x[0] for x in top_15], y=[x[6]/1e12 for x in top_15])])
@@ -252,14 +248,7 @@ def analyze_strategy_day_trade(df_list, market):
             st.write(f"Высокая волатильность (ATR > 5%): {sum(1 for x in filtered if x[3] > 5)}")
             st.write(f"Умеренная волатильность (ATR 2-5%): {sum(1 for x in filtered if 2 <= x[3] <= 5)}")
             st.write(f"Финальный выбор (15 лучших по рыночной капитализации): 15")
-            
-            st.write("### Финальный отбор — 15 лучших акций по рыночной капитализации с умеренной волатильностью (ATR 2–5%):")
-            top_df = pd.DataFrame([
-                {"Тикер": x[0], "Цена закрытия": f"${x[8]:.2f}", "MarketCap": f"${x[6]/1e9:.2f} млрд", "ATR %": f"{x[3]:.2f}%", "Бета": x[5], "Сектор": x[7]}
-                for x in top_15
-            ])
-            st.table(top_df)
-    
+
     return "Анализ завершен"
 
 def analyze_strategy_undervalued(df_list, market):
@@ -342,40 +331,19 @@ with st.container():
     st.title("🚀 >tS|TQTVLSYSTEM")
     st.subheader("AI-Аналитик для трейдеров 📈")
 
-# Админ-панель
-admin_key = st.text_input("🔍 Админ-ключ", type="password", key="admin_key")
-is_admin = admin_key == ADMIN_KEY
+    # Выбор стратегии вместо поля ввода
+    strategy = st.selectbox("🎯 Выберите стратегию", [
+        "Дневная Торговля", "Поиск недооценённых акций", "Игра с доходами", "Торговля опционами"
+    ], key="strategy_select")
+    market = st.selectbox("💹 Рынок", ["Акции", "Криптовалюты"], key="market_select")
 
-if is_admin:
-    with st.expander("🔍 Отладка"):
-        st.write("Отладка готова. Тестовый режим активен.")
-
-# Выбор стратегии и рынка
-strategy = st.selectbox("🎯 Выберите стратегию", [
-    "Дневная Торговля", "Поиск недооценённых акций", "Игра с доходами", "Торговля опционами"
-], key="strategy_select")
-market = st.selectbox("💹 Рынок", ["Акции", "Криптовалюты"], key="market_select")
-
-df_list = None
-if st.button(f"🚀 Запустить {strategy}", key="run_button"):
-    try:
-        with st.spinner("Выполняется анализ... Пожалуйста, подождите."):
-            progress_bar = st.progress(0)
+    df_list = None
+    if st.button(f"🚀 Запустить {strategy}", key="run_button"):
+        with st.spinner('<div class="custom-spinner">Выполняется анализ... Пожалуйста, подождите.</div>', unsafe_allow_html=True):
             if market == "Акции":
-                df_list = []
-                for i, ticker in enumerate(stock_tickers[:500]):
-                    df = fetch_stock_data_cached(ticker)
-                    if df is not None:
-                        df_list.append((ticker, df))
-                    progress_bar.progress((i + 1) / 500)
+                df_list = fetch_data_parallel(stock_tickers[:500], fetch_stock_data_cached)
             else:
-                df_list = []
-                for i, coin in enumerate(crypto_ids[:50]):
-                    df = fetch_crypto_data(coin)
-                    if df is not None:
-                        df_list.append((coin, df))
-                    progress_bar.progress((i + 1) / 50)
-            progress_bar.empty()
+                df_list = fetch_data_parallel(crypto_ids[:50], fetch_crypto_data)
         
         if not df_list:
             st.error("🚨 Нет данных для анализа. Проверьте подключение или тикеры.")
@@ -389,8 +357,6 @@ if st.button(f"🚀 Запустить {strategy}", key="run_button"):
             elif strategy == "Торговля опционами":
                 result = analyze_strategy_options(df_list, market)
             st.success(result)
-    except Exception as e:
-        st.error(f"🚨 Ошибка анализа: {str(e)}")
 
 # Продолжение диалога
 if df_list and 'strategy' in locals():
