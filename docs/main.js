@@ -8,7 +8,7 @@ createProductBtn.addEventListener("click", async () => {
     if (!name || isNaN(price)) return alert("Некорректные данные");
 
     // API-запрос к бекэнду Railway
-    const response = await fetch("https://omni-screener.onrender.com", {
+    const response = await fetch("https://omni-screener.onrender.com/add_product", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, price })
