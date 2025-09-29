@@ -5,3 +5,4 @@ ta
 numpy
 yfinance
 plotly
+concurrent.futures
