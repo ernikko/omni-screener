@@ -9,52 +9,65 @@ import yfinance as yf
 import numpy as np
 import time
 
-# Списки активов
+# Расширенные списки активов (500 акций как промежуточный шаг)
 stock_tickers = [
     "AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "BRK-B", "JPM", "V",
     "WMT", "UNH", "MA", "PG", "HD", "DIS", "BAC", "INTC", "CMCSA", "VZ",
     "PFE", "KO", "PEP", "MRK", "T", "CSCO", "XOM", "CVX", "ABBV", "NKE",
     "ADBE", "CRM", "NFLX", "AMD", "ORCL", "IBM", "QCOM", "TXN", "AMGN", "GILD",
-    "SBUX", "MMM", "GE", "CAT", "BA", "HON", "SPG", "LMT", "UPS", "LOW"
-]
+    "SBUX", "MMM", "GE", "CAT", "BA", "HON", "SPG", "LMT", "UPS", "LOW",
+    # Добавляем еще 450 тикеров (пример, можно расширить через API)
+    "F", "GM", "FORD", "TGT", "WBA", "MDT", "ABT", "JNJ", "P&G", "CL",
+    "KMB", "MO", "PM", "BTI", "HSY", "MCD", "YUM", "SBUX", "DPS", "COKE",
+    "PEP", "KDP", "MNST", "CCE", "CAG", "GIS", "K", "CPB", "HRL", "MKC",
+    # ... (добавьте еще 400+ тикеров для теста)
+] + [f"STOCK{i:04d}" for i in range(450)]  # Плейсхолдеры для теста
 crypto_ids = [
     "bitcoin", "ethereum", "solana", "cardano", "polkadot", "binancecoin", "ripple", "dogecoin", "avalanche-2", "chainlink",
-    "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
-]
+    "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron",
+    # Плейсхолдеры для теста
+] + [f"CRYPTO{i:04d}" for i in range(30)]
 
-# Темный режим и дизайн в стиле Xynth
+# Современный дизайн в стиле Xynth
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
     .stApp {
-        background-color: #000000;
+        background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
         color: #ffffff;
-        font-family: Arial, sans-serif;
+        font-family: 'Roboto', sans-serif;
     }
     .stContainer {
-        max-width: 800px;
+        max-width: 900px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 30px;
         text-align: center;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     }
     .stMetric > label {
         color: #ffffff;
+        font-size: 1.1em;
         text-align: center;
     }
     .stSelectbox > label {
         color: #ffffff;
+        font-size: 1.1em;
         text-align: center;
     }
     .stButton > button {
-        background-color: #1f1f1f;
+        background: linear-gradient(90deg, #2a2a2a, #3a3a3a);
         color: #ffffff;
-        border: 1px solid #ffffff;
-        border-radius: 5px;
-        padding: 10px 20px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        width: 250px;
-        margin: 10px auto;
-        display: block;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 30px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        font-size: 1.1em;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stButton > button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
     }
     .css-1aumxhk {
         width: 80%;
@@ -62,6 +75,20 @@ st.markdown("""
     }
     h1, h2, h3 {
         text-align: center;
+        color: #e0e0e0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    table {
+        margin: 0 auto;
+        border-collapse: collapse;
+        background: #1a1a1a;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    th, td {
+        padding: 10px;
+        text-align: center;
+        border: 1px solid #333;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -160,9 +187,9 @@ def analyze_strategy_day_trade(df_list, market):
     st.write("• Гистограмма показывает, что большинство акций имеют ATR 3-6%. Диапазон 2-5% — оптимальная зона умеренной волатильности.")
     st.write("• Доминирование секторов: Технологии (7 акций), Услуги связи (3), Финансы (3).")
     
-    st.subheader("🏆 Пять лучших акций")
+    st.subheader("🏆 Топ-15 лучших акций")
     top_df = pd.DataFrame([
-        {"Акция": x[0], "Cap ($T)": x[6]/1e12, "ATR %": x[3], "Бета": x[5]} for x in top_15[:5]
+        {"Акция": x[0], "Cap ($T)": x[6]/1e12, "ATR %": x[3], "Бета": x[5]} for x in top_15
     ])
     st.table(top_df)
     
@@ -254,7 +281,7 @@ is_admin = admin_key == ADMIN_KEY
 
 if is_admin:
     with st.expander("🔍 Отладка"):
-        st.write("Отладка готова. Тестовый режим: проверка данных.")
+        st.write("Отладка готова. Тестовый режим активен.")
 
 # Выбор стратегии и рынка
 strategy = st.selectbox("🎯 Выберите стратегию", [
@@ -266,7 +293,7 @@ df_list = None
 if st.button(f"🚀 Запустить {strategy}", key="run_button"):
     try:
         if market == "Акции":
-            df_list = [(ticker, fetch_stock_data_cached(ticker)) for ticker in stock_tickers[:50] if fetch_stock_data_cached(ticker) is not None]
+            df_list = [(ticker, fetch_stock_data_cached(ticker)) for ticker in stock_tickers[:500] if fetch_stock_data_cached(ticker) is not None]
         else:
             df_list = [(coin, fetch_crypto_data(coin)) for coin in crypto_ids[:50] if fetch_crypto_data(coin) is not None]
         
