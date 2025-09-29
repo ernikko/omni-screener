@@ -1,11 +1,10 @@
-f# app.py
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Разрешаем запросы с любого фронта
+# Разрешаем доступ с любого фронта
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,12 +12,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Структура товара
+# Модель товара
 class Product(BaseModel):
     name: str
     price: float
 
-# Хранилище товаров (пока в памяти)
+# Хранилище товаров в памяти
 products = []
 product_id = 1
 
@@ -33,3 +32,12 @@ async def add_product(product: Product):
 @app.get("/get_products")
 async def get_products():
     return products
+
+@app.delete("/delete_product/{id}")
+async def delete_product(id: int):
+    global products
+    for p in products:
+        if p["id"] == id:
+            products = [x for x in products if x["id"] != id]
+            return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Product not found")
