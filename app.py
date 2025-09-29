@@ -4,35 +4,64 @@ import pandas as pd
 import time  # Для пауз в API
 import io  # Для парсинга CSV
 
-# Дизайн: Улучшенный CSS для красивого вида
+# Дизайн: Копируем стиль Finviz/DexScreener (синий/серый, таблицы, фильтры в sidebar)
 st.markdown("""
 <style>
     .stApp {
-        background-color: #f0f2f6;
-        color: #333333;
+        background-color: #ffffff;
+        color: #000000;
     }
     .sidebar .sidebar-content {
-        background-color: #ffffff;
-        border-right: 1px solid #ddd;
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
     }
     .stButton > button {
         background-color: #007bff;
         color: white;
-        border-radius: 5px;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-weight: bold;
+    }
+    .stButton > button:hover {
+        background-color: #0056b3;
     }
     .stSelectbox, .stNumberInput, .stTextInput, .stCheckbox {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 5px;
         background-color: #ffffff;
-        border: 1px solid #ddd;
-        border-radius: 5px;
     }
     h1 {
-        color: #007bff;
+        color: #0056b3;
         text-align: center;
+        font-size: 32px;
+        margin-bottom: 20px;
     }
     .stDataFrame {
-        border: 1px solid #ddd;
-        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
         overflow: auto;
+        font-size: 12px;
+    }
+    .stDataFrame table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .stDataFrame th {
+        background-color: #e9ecef;
+        color: #495057;
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .stDataFrame td {
+        padding: 8px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .stExpander {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -50,16 +79,16 @@ def t(key):
             "search_button": "Search assets",
             "no_results": "No assets match the criteria.",
             "filters_header": "Filters",
-            "exchange": "Exchange (e.g., NASDAQ)",
-            "index": "Index (e.g., S&P 500)",
-            "sector": "Sector (e.g., Technology)",
-            "industry": "Industry (e.g., Software)",
-            "country": "Country (e.g., USA)",
+            "exchange": "Exchange (e.g., NASDAQ, NYSE)",
+            "index": "Index (e.g., S&P 500, Dow Jones)",
+            "sector": "Sector (e.g., Technology, Healthcare)",
+            "industry": "Industry (e.g., Software, Biotechnology)",
+            "country": "Country (e.g., USA, China)",
             "min_market_cap": "Min Market Cap (B$)",
             "max_market_cap": "Max Market Cap (B$)",
             "min_div_yield": "Min Dividend Yield (%)",
             "max_short_float": "Max Short Float (%)",
-            "analyst_recom": "Analyst Recom (1-5)",
+            "analyst_recom": "Analyst Recom (1-5, lower better)",
             "option_short": "Option/Short Available",
             "earnings_date": "Earnings Date (YYYY-MM-DD)",
             "min_avg_volume": "Min Average Volume",
@@ -82,7 +111,16 @@ def t(key):
             "max_pb": "Max P/B",
             "min_roe": "Min ROE (%)",
             "min_margin": "Min Operating Margin (%)",
-            "max_peg": "Max PEG"
+            "max_peg": "Max PEG",
+            "min_yield": "Min Yield (for bonds)",
+            "max_duration": "Max Duration (for bonds)",
+            "min_credit_rating": "Min Credit Rating (for bonds, e.g., AAA=1, AA=2)",
+            "min_spot_price": "Min Spot Price (for metals)",
+            "max_spot_price": "Max Spot Price (for metals)",
+            "min_expiry": "Min Futures Expiry (days, for metals)",
+            "min_exchange_rate": "Min Exchange Rate (for currency)",
+            "max_exchange_rate": "Max Exchange Rate (for currency)",
+            "min_volatility": "Min Volatility (%) (for currency)"
         },
         "Russian": {
             "title": "OmniScreener",
@@ -91,16 +129,16 @@ def t(key):
             "search_button": "Поиск активов",
             "no_results": "Нет активов по критериям.",
             "filters_header": "Фильтры",
-            "exchange": "Exchange (например, NASDAQ)",
-            "index": "Index (например, S&P 500)",
-            "sector": "Sector (например, Technology)",
-            "industry": "Industry (например, Software)",
-            "country": "Country (например, USA)",
+            "exchange": "Exchange (например, NASDAQ, NYSE)",
+            "index": "Index (например, S&P 500, Dow Jones)",
+            "sector": "Sector (например, Technology, Healthcare)",
+            "industry": "Industry (например, Software, Biotechnology)",
+            "country": "Country (например, USA, China)",
             "min_market_cap": "Минимальная капитализация (млрд $)",
             "max_market_cap": "Максимальная капитализация (млрд $)",
             "min_div_yield": "Минимальная дивидендная доходность (%)",
             "max_short_float": "Максимум Short Float (%)",
-            "analyst_recom": "Analyst Recom (1-5)",
+            "analyst_recom": "Analyst Recom (1-5, ниже лучше)",
             "option_short": "Option/Short доступны",
             "earnings_date": "Earnings Date (YYYY-MM-DD)",
             "min_avg_volume": "Минимальный Average Volume",
@@ -123,7 +161,16 @@ def t(key):
             "max_pb": "Максимум P/B",
             "min_roe": "Минимум ROE (%)",
             "min_margin": "Минимум Operating Margin (%)",
-            "max_peg": "Максимум PEG"
+            "max_peg": "Максимум PEG",
+            "min_yield": "Минимальный Yield (для облигаций)",
+            "max_duration": "Максимальный Duration (для облигаций)",
+            "min_credit_rating": "Минимальный Credit Rating (для облигаций, e.g., AAA=1, AA=2)",
+            "min_spot_price": "Минимальный Spot Price (для металлов)",
+            "max_spot_price": "Максимальный Spot Price (для металлов)",
+            "min_expiry": "Минимальный Futures Expiry (дни, для металлов)",
+            "min_exchange_rate": "Минимальный Exchange Rate (для валюты)",
+            "max_exchange_rate": "Максимальный Exchange Rate (для валюты)",
+            "min_volatility": "Минимальный Volatility (%) (для валюты)"
         }
     }
     return texts[language].get(key, key)
@@ -131,51 +178,78 @@ def t(key):
 st.subheader(t('subheader'))
 
 # Выбор типа актива
-asset_type = st.selectbox(t('asset_type'), ['Акции', 'Криптовалюта', 'Облигации', 'Металлы', 'Валюта'] if language == "Russian" else ['Stocks', 'Cryptocurrency', 'Bonds', 'Metals', 'Currency'])
+asset_types = ['Stocks', 'Cryptocurrency', 'Bonds', 'Metals', 'Currency'] if language == "English" else ['Акции', 'Криптовалюта', 'Облигации', 'Металлы', 'Валюта']
+asset_type = st.selectbox(t('asset_type'), asset_types)
 
-# Фильтры в sidebar
+# Фильтры в sidebar с expander для категорий
 with st.sidebar:
     st.header(t('filters_header'))
-    exchange = st.text_input(t('exchange'))
-    index = st.text_input(t('index'))
-    sector = st.text_input(t('sector'))
-    industry = st.text_input(t('industry'))
-    country = st.text_input(t('country'))
-    min_market_cap = st.number_input(t('min_market_cap'), value=0.0)
-    max_market_cap = st.number_input(t('max_market_cap'), value=None)
-    min_div_yield = st.number_input(t('min_div_yield'), value=0.0)
-    max_short_float = st.number_input(t('max_short_float'), value=None)
-    analyst_recom = st.number_input(t('analyst_recom'), value=0.0)
-    option_short = st.checkbox(t('option_short'))
-    earnings_date = st.text_input(t('earnings_date'))
-    min_avg_volume = st.number_input(t('min_avg_volume'), value=0)
-    min_rel_volume = st.number_input(t('min_rel_volume'), value=0.0)
-    min_current_volume = st.number_input(t('min_current_volume'), value=0)
-    min_trades = st.number_input(t('min_trades'), value=0)
-    min_price = st.number_input(t('min_price'), value=0.0)
-    max_price = st.number_input(t('max_price'), value=None)
-    target_price = st.number_input(t('target_price'), value=0.0)
-    ipo_date = st.text_input(t('ipo_date'))
-    min_shares_out = st.number_input(t('min_shares_out'), value=0)
-    min_float = st.number_input(t('min_float'), value=0)
-    min_volume_24h = st.number_input(t('min_volume_24h'), value=0.0)
-    min_txns_24h = st.number_input(t('min_txns_24h'), value=0)
-    min_liquidity = st.number_input(t('min_liquidity'), value=0.0)
-    min_fdv = st.number_input(t('min_fdv'), value=0.0)
-    min_change_24h = st.number_input(t('min_change_24h'), value=float('-inf'))
-    max_change_24h = st.number_input(t('max_change_24h'), value=None)
-    max_ps = st.number_input(t('max_ps'), value=None)
-    max_pb = st.number_input(t('max_pb'), value=None)
-    min_roe = st.number_input(t('min_roe'), value=float('-inf'))
-    min_margin = st.number_input(t('min_margin'), value=float('-inf'))
-    max_peg = st.number_input(t('max_peg'), value=None)
+    
+    with st.expander("Descriptive Filters / Описательные фильтры"):
+        exchange = st.text_input(t('exchange'))
+        index = st.text_input(t('index'))
+        sector = st.text_input(t('sector'))
+        industry = st.text_input(t('industry'))
+        country = st.text_input(t('country'))
+    
+    with st.expander("Fundamental Filters / Фундаментальные фильтры"):
+        min_market_cap = st.number_input(t('min_market_cap'), value=0.0)
+        max_market_cap = st.number_input(t('max_market_cap'), value=None)
+        min_div_yield = st.number_input(t('min_div_yield'), value=0.0)
+        max_short_float = st.number_input(t('max_short_float'), value=None)
+        analyst_recom = st.number_input(t('analyst_recom'), value=0.0)
+        option_short = st.checkbox(t('option_short'))
+        earnings_date = st.text_input(t('earnings_date'))
+    
+    with st.expander("Technical Filters / Технические фильтры"):
+        min_avg_volume = st.number_input(t('min_avg_volume'), value=0)
+        min_rel_volume = st.number_input(t('min_rel_volume'), value=0.0)
+        min_current_volume = st.number_input(t('min_current_volume'), value=0)
+        min_trades = st.number_input(t('min_trades'), value=0)
+        min_volume_24h = st.number_input(t('min_volume_24h'), value=0.0)
+        min_txns_24h = st.number_input(t('min_txns_24h'), value=0)
+        min_liquidity = st.number_input(t('min_liquidity'), value=0.0)
+        min_fdv = st.number_input(t('min_fdv'), value=0.0)
+        min_change_24h = st.number_input(t('min_change_24h'), value=None)
+        max_change_24h = st.number_input(t('max_change_24h'), value=None)
+    
+    with st.expander("Valuation Filters / Оценочные фильтры"):
+        max_ps = st.number_input(t('max_ps'), value=None)
+        max_pb = st.number_input(t('max_pb'), value=None)
+        min_roe = st.number_input(t('min_roe'), value=0.0)
+        min_margin = st.number_input(t('min_margin'), value=0.0)
+        max_peg = st.number_input(t('max_peg'), value=None)
+    
+    with st.expander("Ownership Filters / Владельческие фильтры"):
+        min_shares_out = st.number_input(t('min_shares_out'), value=0)
+        min_float = st.number_input(t('min_float'), value=0)
+    
+    with st.expander("Performance Filters / Производственные фильтры"):
+        min_price = st.number_input(t('min_price'), value=0.0)
+        max_price = st.number_input(t('max_price'), value=None)
+        target_price = st.number_input(t('target_price'), value=0.0)
+        ipo_date = st.text_input(t('ipo_date'))
+    
+    with st.expander("Asset-Specific Filters / Фильтры для типа актива"):
+        if asset_type in ['Bonds', 'Облигации']:
+            min_yield = st.number_input(t('min_yield'), value=0.0)
+            max_duration = st.number_input(t('max_duration'), value=None)
+            min_credit_rating = st.number_input(t('min_credit_rating'), value=0)
+        if asset_type in ['Metals', 'Металлы']:
+            min_spot_price = st.number_input(t('min_spot_price'), value=0.0)
+            max_spot_price = st.number_input(t('max_spot_price'), value=None)
+            min_expiry = st.number_input(t('min_expiry'), value=0)
+        if asset_type in ['Currency', 'Валюта']:
+            min_exchange_rate = st.number_input(t('min_exchange_rate'), value=0.0)
+            max_exchange_rate = st.number_input(t('max_exchange_rate'), value=None)
+            min_volatility = st.number_input(t('min_volatility'), value=0.0)
 
 if st.button(t('search_button')):
     results = []
 
     api_key = 'MS2HKDM5JROIZSKQ'
 
-    if asset_type in ['Акции', 'Stocks']:
+    if asset_type in ['Stocks', 'Акции']:
         # Полный список акций от Alpha Vantage (CSV парсинг)
         search_url = f'https://www.alphavantage.co/query?function=LISTING_STATUS&apikey={api_key}'
         response = requests.get(search_url)
@@ -208,12 +282,12 @@ if st.button(t('search_button')):
                         price = float(data.get('Price', 0))
                         if (max_ps is None or ps < max_ps) and (max_pb is None or pb < max_pb) and roe > min_roe and margin > min_margin and (max_peg is None or peg < max_peg) and div_yield > min_div_yield and (max_short_float is None or short_float < max_short_float) and avg_volume > min_avg_volume and rel_volume > min_rel_volume and current_volume > min_current_volume and min_price <= price and (max_price is None or price <= max_price):
                             results.append({
-                                'Актив' if language == "Russian" else 'Asset': symbol,
-                                'Капитализация ($B)' if language == "Russian" else 'Market Cap ($B)': market_cap,
+                                'Asset' if language == "English" else 'Актив': symbol,
+                                'Market Cap ($B)' if language == "English" else 'Капитализация ($B)': market_cap,
                                 'P/S': ps,
                                 'P/B': pb,
                                 'ROE (%)': roe,
-                                'Маржа (%)' if language == "Russian" else 'Margin (%)': margin,
+                                'Margin (%)' if language == "English" else 'Маржа (%)': margin,
                                 'PEG': peg,
                                 'Dividend Yield (%)': div_yield,
                                 'Short Float (%)': short_float,
@@ -221,10 +295,10 @@ if st.button(t('search_button')):
                                 'Rel Volume': rel_volume,
                                 'Current Volume': current_volume,
                                 'Price': price,
-                                'Сигнал' if language == "Russian" else 'Signal': 'Недооценён (покупка)' if ps < 2 else 'Переоценён (продажа)' if language == "Russian" else 'Undervalued (Buy)' if ps < 2 else 'Overvalued (Sell)'
+                                'Signal' if language == "English" else 'Сигнал': 'Undervalued (Buy)' if ps < 2 else 'Overvalued (Sell)' if language == "English" else 'Недооценён (покупка)' if ps < 2 else 'Переоценён (продажа)'
                             })
 
-    elif asset_type in ['Криптовалюта', 'Cryptocurrency']:
+    elif asset_type in ['Cryptocurrency', 'Криптовалюта']:
         # Полный список от CoinGecko
         all_data = []
         for page in range(1, 21):
@@ -234,21 +308,21 @@ if st.button(t('search_button')):
         for coin in all_data:
             market_cap = coin.get('market_cap', 0) / 1e9
             if min_market_cap <= market_cap and (max_market_cap is None or market_cap <= max_market_cap):
-                change_24h = coin.get('price_change_percentage_24h') if coin.get('price_change_percentage_24h') is not None else 0
+                change_24h = coin.get('price_change_percentage_24h') or 0
                 volume_24h = coin.get('total_volume', 0)
-                liquidity = coin.get('high_24h', 0) - coin.get('low_24h', 0) if coin.get('high_24h') and coin.get('low_24h') else 0
-                fdv = coin.get('fully_diluted_valuation', 0) / 1e9 if coin.get('fully_diluted_valuation') else 0
+                liquidity = (coin.get('high_24h', 0) - coin.get('low_24h', 0)) or 0
+                fdv = (coin.get('fully_diluted_valuation', 0) / 1e9) or 0
                 price = coin.get('current_price', 0)
-                if volume_24h > min_volume_24h and min_txns_24h == 0 and liquidity > min_liquidity and fdv > min_fdv and min_change_24h <= change_24h and (max_change_24h is None or change_24h <= max_change_24h) and min_price <= price and (max_price is None or price <= max_price):
+                if volume_24h > min_volume_24h and min_txns_24h == 0 and liquidity > min_liquidity and fdv > min_fdv and (min_change_24h is None or change_24h >= min_change_24h) and (max_change_24h is None or change_24h <= max_change_24h) and min_price <= price and (max_price is None or price <= max_price):
                     results.append({
-                        'Актив' if language == "Russian" else 'Asset': coin['symbol'].upper(),
-                        'Капитализация ($B)' if language == "Russian" else 'Market Cap ($B)': market_cap,
+                        'Asset' if language == "English" else 'Актив': coin['symbol'].upper(),
+                        'Market Cap ($B)' if language == "English" else 'Капитализация ($B)': market_cap,
                         '24h Change (%)': change_24h,
                         '24h Volume': volume_24h,
                         'Liquidity': liquidity,
                         'FDV ($B)': fdv,
                         'Price': price,
-                        'Сигнал' if language == "Russian" else 'Signal': 'Недооценён (покупка)' if change_24h < 0 else 'Переоценён (продажа)' if language == "Russian" else 'Undervalued (Buy)' if change_24h < 0 else 'Overvalued (Sell)'
+                        'Signal' if language == "English" else 'Сигнал': 'Undervalued (Buy)' if change_24h < 0 else 'Overvalued (Sell)' if language == "English" else 'Недооценён (покупка)' if change_24h < 0 else 'Переоценён (продажа)'
                     })
 
     # Аналогично для других типов (расширьте как нужно)
