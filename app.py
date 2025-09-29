@@ -9,24 +9,51 @@ import yfinance as yf
 import numpy as np
 import time
 
-# Темный режим
+# Списки активов
+stock_tickers = [
+    "AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "BRK-B", "JPM", "V",
+    "WMT", "UNH", "MA", "PG", "HD", "DIS", "BAC", "INTC", "CMCSA", "VZ",
+    "PFE", "KO", "PEP", "MRK", "T", "CSCO", "XOM", "CVX", "ABBV", "NKE",
+    "ADBE", "CRM", "NFLX", "AMD", "ORCL", "IBM", "QCOM", "TXN", "AMGN", "GILD",
+    "SBUX", "MMM", "GE", "CAT", "BA", "HON", "SPG", "LMT", "UPS", "LOW"
+]
+crypto_ids = [
+    "bitcoin", "ethereum", "solana", "cardano", "polkadot", "binancecoin", "ripple", "dogecoin", "avalanche-2", "chainlink",
+    "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
+]
+
+# Темный режим и дизайн в стиле Xynth
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
     .stApp {
         background-color: #000000;
         color: #ffffff;
+        font-family: Arial, sans-serif;
+    }
+    .stContainer {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
     }
     .stMetric > label {
         color: #ffffff;
     }
     .stSelectbox > label {
         color: #ffffff;
+        text-align: center;
     }
     .stButton > button {
         background-color: #1f1f1f;
         color: #ffffff;
         border-color: #ffffff;
+        width: 200px;
+        margin: 0 auto;
+        display: block;
+    }
+    .css-1aumxhk {
+        width: 80%;
+        margin: 0 auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -84,7 +111,6 @@ def fetch_stock_fundamentals(ticker):
         return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "atr": None}
 
 def analyze_strategy_day_trade(df_list, market):
-    # Фильтрация как в Xynth: цена >$10, ATR 2-5%, объем >2M, бета >1.2, топ-15 по cap
     filtered = []
     for ticker, df in df_list:
         if df is None or len(df) < 30:
@@ -104,18 +130,15 @@ def analyze_strategy_day_trade(df_list, market):
             continue
         filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0)))
     
-    # Сортировка по cap
     filtered.sort(key=lambda x: x[6], reverse=True)
     top_15 = filtered[:15]
     
-    # Визуализация
     fig = go.Figure()
     atr_data = [x[3] for x in filtered]
     fig.add_trace(go.Histogram(x=atr_data, name="ATR%", nbinsx=20))
     fig.update_layout(title="Распределение ATR%", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
     
-    # Отчет
     st.subheader("📊 Анализ рынка")
     col1, col2 = st.columns(2)
     with col1:
@@ -135,23 +158,9 @@ def analyze_strategy_day_trade(df_list, market):
     ])
     st.table(top_df)
     
-    st.subheader("Что дальше?")
-    next_steps = st.selectbox("Выберите действие", [
-        "Анализ портфеля", "Технический анализ", "Сравнение волатильности", 
-        "Фундаментальный анализ", "Разбивка по секторам"
-    ])
-    if next_steps == "Технический анализ":
-        ticker = st.selectbox("Выберите акцию", [x[0] for x in top_15])
-        df = next((x[1] for x in top_15 if x[0] == ticker), None)
-        if df is not None:
-            fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Close'], high=df['High'], low=df['Low'], close=df['Close'])])
-            fig.update_layout(title=f"Свечи {ticker}", template="plotly_dark")
-            st.plotly_chart(fig, use_container_width=True)
-    
     return "Анализ завершен"
 
 def analyze_strategy_undervalued(df_list, market):
-    # Фильтрация недооцененных: P/E <15, EPS >0, Debt/Equity <0.5
     filtered = []
     for ticker, df in df_list:
         if df is None or len(df) < 30:
@@ -163,7 +172,6 @@ def analyze_strategy_undervalued(df_list, market):
         if pe and pe < 15 and eps and eps > 0 and debt and debt < 0.5:
             filtered.append((ticker, df, pe, eps, debt))
     
-    # Топ по ROE
     top_10 = sorted(filtered, key=lambda x: fetch_stock_fundamentals(x[0]).get("roe", 0), reverse=True)[:10]
     
     st.subheader("📊 Анализ рынка")
@@ -176,86 +184,117 @@ def analyze_strategy_undervalued(df_list, market):
     ])
     st.table(top_df)
     
-    st.subheader("Что дальше?")
-    next_steps = st.selectbox("Выберите действие", ["Фундаментальный анализ", "Технический анализ", "Портфель"])
-    if next_steps == "Технический анализ":
-        ticker = st.selectbox("Выберите акцию", [x[0] for x in top_10])
-        df = next((x[1] for x in top_10 if x[0] == ticker), None)
-        if df is not None:
-            fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Close'], high=df['High'], low=df['Low'], close=df['Close'])])
-            fig.update_layout(title=f"Свечи {ticker}", template="plotly_dark")
-            st.plotly_chart(fig, use_container_width=True)
+    return "Анализ завершен"
+
+def analyze_strategy_income(df_list, market):
+    filtered = []
+    for ticker, df in df_list:
+        if df is None or len(df) < 30:
+            continue
+        fundamentals = fetch_stock_fundamentals(ticker)
+        dividend_yield = fundamentals.get("dividendYield", 0)
+        eps = fundamentals.get("eps", 0)
+        if dividend_yield > 0.02 and eps > 0:
+            filtered.append((ticker, df, dividend_yield, eps))
+    
+    top_10 = sorted(filtered, key=lambda x: x[2], reverse=True)[:10]
+    
+    st.subheader("📊 Анализ рынка")
+    st.metric("Начальная вселенная", len(df_list))
+    st.metric("После фильтра Dividend>2%, EPS>0", len(filtered))
+    
+    st.subheader("🏆 Топ-10 акций с доходами")
+    top_df = pd.DataFrame([
+        {"Акция": x[0], "Dividend Yield": x[2], "EPS": x[3]} for x in top_10
+    ])
+    st.table(top_df)
+    
+    return "Анализ завершен"
+
+def analyze_strategy_options(df_list, market):
+    filtered = []
+    for ticker, df in df_list:
+        if df is None or len(df) < 30:
+            continue
+        atr_pct = (df['High'].subtract(df['Low']).rolling(14).mean().iloc[-1] / df['Close'].iloc[-1]) * 100
+        momentum = ta.momentum.ROCIndicator(df['Close']).roc().iloc[-1]
+        if atr_pct > 3 and momentum > 5:
+            filtered.append((ticker, df, atr_pct, momentum))
+    
+    top_10 = sorted(filtered, key=lambda x: x[3], reverse=True)[:10]
+    
+    st.subheader("📊 Анализ рынка")
+    st.metric("Начальная вселенная", len(df_list))
+    st.metric("После фильтра ATR>3%, Momentum>5%", len(filtered))
+    
+    st.subheader("🏆 Топ-10 для опционов")
+    top_df = pd.DataFrame([
+        {"Акция": x[0], "ATR %": x[2], "Momentum": x[3]} for x in top_10
+    ])
+    st.table(top_df)
     
     return "Анализ завершен"
 
 # Streamlit приложение
-st.title("🚀 >tS|TQTVLSYSTEM")
-st.subheader("AI-Аналитик для трейдеров 📈")
+with st.container():
+    st.title("🚀 >tS|TQTVLSYSTEM")
+    st.subheader("AI-Аналитик для трейдеров 📈")
 
 # Админ-панель
-admin_key = st.text_input("🔍 Админ-ключ (для отладки)", type="password")
+admin_key = st.text_input("🔍 Админ-ключ", type="password", key="admin_key")
 is_admin = admin_key == ADMIN_KEY
 
 if is_admin:
     with st.expander("🔍 Отладка"):
-        # Отладка кода
         st.write("Отладка готова")
 
-# Выбор стратегии (скрипта)
-strategy = st.selectbox("🎯 Выберите стратегию (скрипт)", [
+# Выбор стратегии и рынка
+strategy = st.selectbox("🎯 Выберите стратегию", [
     "Дневная Торговля", "Поиск недооценённых акций", "Игра с доходами", "Торговля опционами"
-])
-market = st.selectbox("💹 Рынок", ["Акции", "Криптовалюты"])
+], key="strategy_select")
+market = st.selectbox("💹 Рынок", ["Акции", "Криптовалюты"], key="market_select")
 
-if st.button(f"🚀 Запустить {strategy}"):
+if st.button(f"🚀 Запустить {strategy}", key="run_button"):
     if market == "Акции":
-        # Загрузка данных для 50 акций
-        df_list = []
-        for ticker in stock_tickers[:50]:
-            df = fetch_stock_data_cached(ticker)
-            if df is not None:
-                df_list.append((ticker, df))
+        df_list = [(ticker, fetch_stock_data_cached(ticker)) for ticker in stock_tickers[:50] if fetch_stock_data_cached(ticker) is not None]
     else:
-        df_list = []
-        for coin in crypto_ids[:50]:
-            df = fetch_crypto_data(coin)
-            if df is not None:
-                df_list.append((coin, df))
+        df_list = [(coin, fetch_crypto_data(coin)) for coin in crypto_ids[:50] if fetch_crypto_data(coin) is not None]
     
-    if strategy == "Дневная Торговля":
-        result = analyze_strategy_day_trade(df_list, market)
-    elif strategy == "Поиск недооценённых акций":
-        result = analyze_strategy_undervalued(df_list, market)
+    if df_list:
+        if strategy == "Дневная Торговля":
+            result = analyze_strategy_day_trade(df_list, market)
+        elif strategy == "Поиск недооценённых акций":
+            result = analyze_strategy_undervalued(df_list, market)
+        elif strategy == "Игра с доходами":
+            result = analyze_strategy_income(df_list, market)
+        elif strategy == "Торговля опционами":
+            result = analyze_strategy_options(df_list, market)
+        st.success(result)
     else:
-        st.info(f"Стратегия '{strategy}' в разработке. Выберите 'Дневная Торговля' для теста.")
-    
-    st.success(result)
+        st.error("🚨 Нет данных для анализа. Проверьте подключение или тикеры.")
 
 # Продолжение диалога
-if 'strategy' in locals():
+if 'strategy' in locals() and df_list:
     next_action = st.selectbox("Что дальше?", [
         "Анализ портфеля", "Технический анализ", "Сравнение волатильности", 
         "Фундаментальный анализ", "Разбивка по секторам"
-    ])
+    ], key="next_action")
     if next_action == "Технический анализ":
-        ticker = st.text_input("Введите тикер (например, META)")
+        ticker = st.text_input("Введите тикер (например, META)", key="ticker_input")
         if ticker:
             df = fetch_stock_data_cached(ticker, interval="5m", period="3d") if market == "Акции" else fetch_crypto_data(ticker, days=3)
             if df is not None:
                 fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Close'], high=df['High'], low=df['Low'], close=df['Close'])])
                 fig.update_layout(title=f"5-мин свечи {ticker} за 3 дня", template="plotly_dark")
                 st.plotly_chart(fig, use_container_width=True)
-                
-                # Уровни поддержки/сопротивления
                 support = df['Low'].rolling(20).min().iloc[-1]
                 resistance = df['High'].rolling(20).max().iloc[-1]
                 st.write(f"🛡️ **Поддержка**: ${support:.2f}")
                 st.write(f"🎯 **Сопротивление**: ${resistance:.2f}")
 
 # Telegram
-chat_id_input = st.text_input("📬 Chat ID для отчета")
-if st.button("📤 Отправить отчет"):
-    # Генерация отчета
+chat_id_input = st.text_input("📬 Chat ID для отчета", key="chat_id")
+if st.button("📤 Отправить отчет", key="send_report"):
     message = f"🚀 Отчет по {strategy}\n📊 Топ-активы: {', '.join([x[0] for x in df_list[:5]])}"
     result = send_telegram_report(chat_id_input, message)
     st.write(result)
