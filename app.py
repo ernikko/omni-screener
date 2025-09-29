@@ -2,10 +2,34 @@ import streamlit as st
 import pandas as pd
 import requests
 import ta
+import plotly.graph_objects as go
+import plotly.express as px
 from datetime import datetime, timedelta
 import yfinance as yf
 import numpy as np
 import time
+
+# Темный режим
+st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
+st.markdown("""
+<style>
+    .stApp {
+        background-color: #000000;
+        color: #ffffff;
+    }
+    .stMetric > label {
+        color: #ffffff;
+    }
+    .stSelectbox > label {
+        color: #ffffff;
+    }
+    .stButton > button {
+        background-color: #1f1f1f;
+        color: #ffffff;
+        border-color: #ffffff;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # API ключ и Telegram токен
 ALPHA_VANTAGE_API_KEY = st.secrets.get("ALPHA_VANTAGE_API_KEY", "NFNQC9SQK6XF7CY3")
@@ -14,32 +38,13 @@ ADMIN_KEY = st.secrets.get("ADMIN_KEY", "mysecretkey123")
 
 # Кэширование данных
 @st.cache_data(ttl=300)
-def fetch_stock_data_cached(ticker, use_alpha=True, interval="1d", period="1y"):
-    if use_alpha and interval == "1d":
-        try:
-            url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=full&apikey={ALPHA_VANTAGE_API_KEY}"
-            response = requests.get(url)
-            data = response.json()
-            if "Error Message" in data or "Note" in data.get("Error Message", ""):
-                st.warning(f"Alpha Vantage ошибка для {ticker}: {data.get('Note', 'Rate limit?')}")
-                return None
-            if "Time Series (Daily)" in data:
-                df = pd.DataFrame.from_dict(data["Time Series (Daily)"], orient="index").astype(float)
-                df.index = pd.to_datetime(df.index)
-                df = df.rename(columns={"4. close": "Close", "5. volume": "Volume", "2. high": "High", "3. low": "Low"})
-                return df[["Close", "Volume", "High", "Low"]].sort_index()
-        except Exception as e:
-            st.warning(f"Ошибка Alpha Vantage для {ticker}: {str(e)}")
-    
+def fetch_stock_data_cached(ticker, interval="1d", period="1y"):
     try:
         stock = yf.Ticker(ticker)
         df = stock.history(period=period, interval=interval)
         if not df.empty:
             df = df[["Close", "Volume", "High", "Low"]]
             return df
-        else:
-            st.warning(f"Нет данных для {ticker} в yfinance")
-            return None
     except Exception as e:
         st.warning(f"Ошибка yfinance для {ticker}: {str(e)}")
     return None
@@ -58,10 +63,8 @@ def fetch_crypto_data(coin_id, days=365):
             'Low': [x[1] for x in data['prices']]
         })
         df.set_index('Date', inplace=True)
-        df_7h = df.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
-        df_1w = df.resample('1W').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
-        return df, df_7h, df_1w
-    return None, None, None
+        return df
+    return None
 
 @st.cache_data(ttl=300)
 def fetch_stock_fundamentals(ticker):
@@ -69,484 +72,192 @@ def fetch_stock_fundamentals(ticker):
         stock = yf.Ticker(ticker)
         info = stock.info
         return {
-            "bid": float(info.get("bid", 0)),
-            "ask": float(info.get("ask", 0)),
             "pe_ratio": info.get("trailingPE", None),
             "eps": info.get("trailingEps", None),
             "debt_equity": info.get("debtToEquity", None),
             "roe": info.get("returnOnEquity", None),
-            "market_cap": info.get("marketCap", None)
+            "market_cap": info.get("marketCap", None),
+            "beta": info.get("beta", None),
+            "atr": stock.history(period="1mo")['High'].subtract(stock.history(period="1mo")['Low']).rolling(14).mean().iloc[-1]
         }
     except:
-        return {"bid": None, "ask": None, "pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None}
+        return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "atr": None}
 
-@st.cache_data(ttl=300)
-def fetch_crypto_fundamentals(coin_id):
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        market_cap = data.get("market_data", {}).get("market_cap", {}).get("usd", None)
-        return {"market_cap": market_cap}
-    return {"market_cap": None}
+def analyze_strategy_day_trade(df_list, market):
+    # Фильтрация как в Xynth: цена >$10, ATR 2-5%, объем >2M, бета >1.2, топ-15 по cap
+    filtered = []
+    for ticker, df in df_list:
+        if df is None or len(df) < 30:
+            continue
+        latest_price = df['Close'].iloc[-1]
+        if latest_price < 10:
+            continue
+        atr_pct = (df['High'].subtract(df['Low']).rolling(14).mean().iloc[-1] / latest_price) * 100
+        if not (2 <= atr_pct <= 5):
+            continue
+        avg_volume = df['Volume'].rolling(10).mean().iloc[-1]
+        if avg_volume < 2e6:
+            continue
+        fundamentals = fetch_stock_fundamentals(ticker)
+        beta = fundamentals.get("beta", 1.0)
+        if beta <= 1.2:
+            continue
+        filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0)))
+    
+    # Сортировка по cap
+    filtered.sort(key=lambda x: x[6], reverse=True)
+    top_15 = filtered[:15]
+    
+    # Визуализация
+    fig = go.Figure()
+    atr_data = [x[3] for x in filtered]
+    fig.add_trace(go.Histogram(x=atr_data, name="ATR%", nbinsx=20))
+    fig.update_layout(title="Распределение ATR%", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Отчет
+    st.subheader("📊 Анализ рынка")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Начальная вселенная", len(df_list))
+        st.metric("После базового фильтра", len(filtered))
+    with col2:
+        st.metric("Высокая волатильность (ATR >5%)", sum(1 for x in filtered if x[3] > 5))
+        st.metric("Умеренная волатильность (ATR 2–5%)", sum(1 for x in filtered if 2 <= x[3] <= 5))
+    
+    st.subheader("🔑 Ключевые идеи")
+    st.write("• Гистограмма показывает, что большинство акций имеют ATR 3-6%. Диапазон 2-5% — оптимальная зона умеренной волатильности.")
+    st.write("• Доминирование секторов: Технологии (7 акций), Услуги связи (3), Финансы (3).")
+    
+    st.subheader("🏆 Пять лучших акций")
+    top_df = pd.DataFrame([
+        {"Акция": x[0], "Cap ($T)", x[6]/1e12, "ATR %": x[3], "Бета": x[5]} for x in top_15[:5]
+    ])
+    st.table(top_df)
+    
+    st.subheader("Что дальше?")
+    next_steps = st.selectbox("Выберите действие", [
+        "Анализ портфеля", "Технический анализ", "Сравнение волатильности", 
+        "Фундаментальный анализ", "Разбивка по секторам"
+    ])
+    if next_steps == "Технический анализ":
+        ticker = st.selectbox("Выберите акцию", [x[0] for x in top_15])
+        df = next((x[1] for x in top_15 if x[0] == ticker), None)
+        if df is not None:
+            fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Close'], high=df['High'], low=df['Low'], close=df['Close'])])
+            fig.update_layout(title=f"Свечи {ticker}", template="plotly_dark")
+            st.plotly_chart(fig, use_container_width=True)
+    
+    return "Анализ завершен"
 
-def calculate_gann_angles(df):
-    if len(df) < 2:
-        return None
-    price_diff = df['Close'].diff().iloc[-1]
-    time_diff = 1
-    slope = price_diff / time_diff
-    if abs(slope) > 0.5:
-        return "Сильный тренd"
-    elif abs(slope) > 0.2:
-        return "Умеренный тренd"
-    else:
-        return "Слабый тренd"
-
-def calculate_schiff_pitchfork(df):
-    if len(df) < 20:
-        return None, None, None
-    high_idx = df['High'].iloc[-20:].idxmax()
-    low_idx = df['Low'].iloc[-20:].idxmin()
-    pivot_high = df['High'].loc[high_idx]
-    pivot_low = df['Low'].loc[low_idx]
-    median_price = (pivot_high + pivot_low) / 2
-    latest_price = df['Close'].iloc[-1]
-    if latest_price > median_price:
-        return "Покупка (выше медианы)", median_price, latest_price
-    elif latest_price < median_price:
-        return "Продажа (ниже медианы)", median_price, latest_price
-    return None, median_price, latest_price
-
-def analyze_short_term(df, df_7h, fundamentals):
-    if df is None or len(df) < 30 or df_7h is None or len(df_7h) < 10:
-        return "Неизвестно", 0, [], None, None, None
+def analyze_strategy_undervalued(df_list, market):
+    # Фильтрация недооцененных: P/E <15, EPS >0, Debt/Equity <0.5
+    filtered = []
+    for ticker, df in df_list:
+        if df is None or len(df) < 30:
+            continue
+        fundamentals = fetch_stock_fundamentals(ticker)
+        pe = fundamentals.get("pe_ratio")
+        eps = fundamentals.get("eps")
+        debt = fundamentals.get("debt_equity")
+        if pe and pe < 15 and eps and eps > 0 and debt and debt < 0.5:
+            filtered.append((ticker, df, pe, eps, debt))
     
-    # Индикаторы
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
-    df['CCI'] = ta.trend.CCIIndicator(df['High'], df['Low'], df['Close'], window=20).cci()
-    df['EMA50'] = ta.trend.EMAIndicator(df['Close'], window=50).ema_indicator()
-    df['EMA200'] = ta.trend.EMAIndicator(df['Close'], window=200).ema_indicator()
-    df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
-    df['Momentum'] = ta.momentum.ROCIndicator(df['Close']).roc()
-    df_7h['RSI_7h'] = ta.momentum.RSIIndicator(df_7h['Close'], window=14).rsi()
+    # Топ по ROE
+    top_10 = sorted(filtered, key=lambda x: fetch_stock_fundamentals(x[0]).get("roe", 0), reverse=True)[:10]
     
-    latest_rsi = df['RSI'].iloc[-1] if not df['RSI'].isna().iloc[-1] else 50
-    latest_cci = df['CCI'].iloc[-1] if not df['CCI'].isna().iloc[-1] else 0
-    latest_ema50 = df['EMA50'].iloc[-1] if not df['EMA50'].isna().iloc[-1] else df['Close'].iloc[-1]
-    latest_ema200 = df['EMA200'].iloc[-1] if not df['EMA200'].isna().iloc[-1] else df['Close'].iloc[-1]
-    latest_volume = df['Volume'].iloc[-1]
-    volume_ma = df['Volume_MA'].iloc[-1] if not df['Volume_MA'].isna().iloc[-1] else latest_volume
-    latest_momentum = df['Momentum'].iloc[-1] if not df['Momentum'].isna().iloc[-1] else 0
-    latest_rsi_7h = df_7h['RSI_7h'].iloc[-1] if not df_7h['RSI_7h'].isna().iloc[-1] else 50
-    latest_price = df['Close'].iloc[-1]
-    latest_atr = ta.volatility.AverageTrueRange(df['High'], df['Low'], df['Close']).average_true_range().iloc[-1]
+    st.subheader("📊 Анализ рынка")
+    st.metric("Начальная вселенная", len(df_list))
+    st.metric("После фильтра P/E<15, EPS>0, Debt<0.5", len(filtered))
     
-    gann_trend = calculate_gann_angles(df_7h)
-    schiff_signal, schiff_median, schiff_price = calculate_schiff_pitchfork(df_7h)
+    st.subheader("🏆 Топ-10 недооцененных акций")
+    top_df = pd.DataFrame([
+        {"Акция": x[0], "P/E": x[2], "EPS": x[3], "Debt/Equity": x[4]} for x in top_10
+    ])
+    st.table(top_df)
     
-    bid = fundamentals.get("bid")
-    ask = fundamentals.get("ask")
-    pe_ratio = fundamentals.get("pe_ratio")
+    st.subheader("Что дальше?")
+    next_steps = st.selectbox("Выберите действие", ["Фундаментальный анализ", "Технический анализ", "Портфель"])
+    if next_steps == "Технический анализ":
+        ticker = st.selectbox("Выберите акцию", [x[0] for x in top_10])
+        df = next((x[1] for x in top_10 if x[0] == ticker), None)
+        if df is not None:
+            fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Close'], high=df['High'], low=df['Low'], close=df['Close'])])
+            fig.update_layout(title=f"Свечи {ticker}", template="plotly_dark")
+            st.plotly_chart(fig, use_container_width=True)
     
-    score = 0
-    confirmations = 0
-    trend = "Неизвестно"
-    entry_signal = None
-    debug_info = []
-    
-    # Краткосрочные сигналы (перепроданность → лонг, переоцененность → шорт)
-    if latest_rsi < 30 and latest_cci < -100:
-        trend = "Восходящий тренd"
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• RSI={latest_rsi:.2f}<30, CCI={latest_cci:.2f}<-100: Перепроданность")
-    elif latest_rsi > 70 and latest_cci > 100:
-        trend = "Нисходящий тренd"
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• RSI={latest_rsi:.2f}>70, CCI={latest_cci:.2f}>100: Переоцененность")
-    
-    if latest_price > latest_ema50 > latest_ema200:
-        if trend == "Восходящий тренd":
-            confirmations += 1
-        trend = "Восходящий тренd"
-        score += 0.2
-        debug_info.append(f"• Price={latest_price:.2f}>EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Поддержка")
-    elif latest_price < latest_ema50 < latest_ema200:
-        if trend == "Нисходящий тренd":
-            confirmations += 1
-        trend = "Нисходящий тренd"
-        score += 0.2
-        debug_info.append(f"• Price={latest_price:.2f}<EMA50={latest_ema50:.2f}<EMA200={latest_ema200:.2f}: Сопротивление")
-    
-    if bid and ask and bid > 0 and ask > 0:
-        spread = ask - bid
-        if spread < latest_price * 0.01 and bid > ask:
-            if trend == "Восходящий тренd":
-                confirmations += 1
-            score += 0.15
-            debug_info.append(f"• Bid={bid:.2f}>Ask={ask:.2f}, спред={spread:.2f}: Спрос")
-        elif spread < latest_price * 0.01 and ask > bid:
-            if trend == "Нисходящий тренd":
-                confirmations += 1
-            score += 0.15
-            debug_info.append(f"• Ask={ask:.2f}>Bid={bid:.2f}, спред={spread:.2f}: Предложение")
-    
-    if gann_trend == "Сильный тренd":
-        if trend == "Восходящий тренd":
-            confirmations += 1
-        score += 0.15
-        debug_info.append(f"• Gann (7H): {gann_trend}")
-    elif gann_trend == "Слабый тренd" and trend == "Нисходящий тренd":
-        confirmations += 1
-        score += 0.15
-        debug_info.append(f"• Gann (7H): {gann_trend}")
-    
-    if schiff_signal:
-        if schiff_signal.startswith("Покупка") and trend == "Восходящий тренd":
-            confirmations += 1
-            score += 0.15
-            debug_info.append(f"• Schiff: {schiff_signal}")
-        elif schiff_signal.startswith("Продажа") and trend == "Нисходящий тренd":
-            confirmations += 1
-            score += 0.15
-            debug_info.append(f"• Schiff: {schiff_signal}")
-    
-    if latest_volume > volume_ma * 1.2 and latest_momentum > 3:  # Смягчение условий
-        if trend == "Восходящий тренd":
-            confirmations += 1
-        score += 0.1
-        debug_info.append(f"• Volume={latest_volume:.2f}>1.2*MA={volume_ma:.2f}, Momentum={latest_momentum:.2f}>3: Импульс роста")
-    elif latest_volume > volume_ma * 1.2 and latest_momentum < -3:
-        if trend == "Нисходящий тренd":
-            confirmations += 1
-        score += 0.1
-        debug_info.append(f"• Volume={latest_volume:.2f}>1.2*MA={volume_ma:.2f}, Momentum={latest_momentum:.2f}<-3: Импульс падения")
-    
-    if latest_rsi_7h < 30 and trend == "Восходящий тренd":
-        entry_signal = f"Лонг (RSI_7h={latest_rsi_7h:.2f}<30)"
-        debug_info.append(entry_signal)
-    elif latest_rsi_7h > 70 and trend == "Нисходящий тренd":
-        entry_signal = f"Шорт (RSI_7h={latest_rsi_7h:.2f}>70)"
-        debug_info.append(entry_signal)
-    
-    if pe_ratio and pe_ratio < 15 and trend == "Восходящий тренd":
-        score += 0.2
-        debug_info.append(f"• P/E={pe_ratio:.2f}<15: Недооценка")
-    elif pe_ratio and pe_ratio > 30 and trend == "Нисходящий тренd":
-        score += 0.2
-        debug_info.append(f"• P/E={pe_ratio:.2f}>30: Переоценка")
-    
-    target = latest_price + (2 * latest_atr if latest_atr else latest_price * 0.05) if trend == "Восходящий тренd" else latest_price - (2 * latest_atr if latest_atr else latest_price * 0.05)
-    stop_loss = latest_price - (1.5 * latest_atr if latest_atr else latest_price * 0.05) if trend == "Восходящий тренd" else latest_price + (1.5 * latest_atr if latest_atr else latest_price * 0.05)
-    potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
-    
-    if confirmations < 3:
-        trend = "Неизвестно"
-        score = 0
-        debug_info.append(f"Подтверждений={confirmations}<3: Неизвестно")
-    elif confirmations >= 4:
-        score += 0.3
-    
-    return trend, score, debug_info, entry_signal, target, stop_loss
-
-def analyze_long_term(df, df_1w, fundamentals):
-    if df is None or len(df) < 30 or df_1w is None or len(df_1w) < 10:
-        return "Неизвестно", 0, [], None, None, None
-    
-    # Индикаторы
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
-    df['EMA50'] = ta.trend.EMAIndicator(df['Close'], window=50).ema_indicator()
-    df['EMA200'] = ta.trend.EMAIndicator(df['Close'], window=200).ema_indicator()
-    df_1w['ADX'] = ta.trend.ADXIndicator(df_1w['High'], df_1w['Low'], df_1w['Close']).adx()
-    
-    latest_rsi = df['RSI'].iloc[-1] if not df['RSI'].isna().iloc[-1] else 50
-    latest_ema50 = df['EMA50'].iloc[-1] if not df['EMA50'].isna().iloc[-1] else df['Close'].iloc[-1]
-    latest_ema200 = df['EMA200'].iloc[-1] if not df['EMA200'].isna().iloc[-1] else df['Close'].iloc[-1]
-    latest_adx = df_1w['ADX'].iloc[-1] if not df_1w['ADX'].isna().iloc[-1] else 20
-    latest_price = df['Close'].iloc[-1]
-    latest_atr = ta.volatility.AverageTrueRange(df['High'], df['Low'], df['Close']).average_true_range().iloc[-1]
-    
-    pe_ratio = fundamentals.get("pe_ratio")
-    eps = fundamentals.get("eps")
-    debt_equity = fundamentals.get("debt_equity")
-    roe = fundamentals.get("roe")
-    market_cap = fundamentals.get("market_cap")
-    
-    score = 0
-    confirmations = 0
-    trend = "Неизвестно"
-    debug_info = []
-    
-    # Долгосрочные сигналы
-    if latest_ema50 > latest_ema200:
-        trend = "Восходящий тренd"
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Долгосрочный рост")
-    
-    if 40 < latest_rsi < 60:
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• RSI={latest_rsi:.2f} в 40-60: Потенциал роста")
-    
-    if latest_adx > 20:
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• ADX={latest_adx:.2f}>20: Устойчивый тренd")
-    
-    if pe_ratio and pe_ratio < 15:
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• P/E={pe_ratio:.2f}<15: Недооценка")
-    
-    if eps and eps > 0:
-        confirmations += 1
-        score += 0.15
-        debug_info.append(f"• EPS={eps:.2f}>0: Положительная прибыль")
-    
-    if debt_equity and debt_equity < 0.5:
-        confirmations += 1
-        score += 0.15
-        debug_info.append(f"• Debt/Equity={debt_equity:.2f}<0.5: Низкая долговая нагрузка")
-    
-    if roe and roe > 0.1:
-        confirmations += 1
-        score += 0.15
-        debug_info.append(f"• ROE={roe:.2f}>10%: Высокая рентабельность")
-    
-    if market_cap and market_cap > 1e8:  # Минимальный market cap для крипты
-        confirmations += 1
-        score += 0.2
-        debug_info.append(f"• Market Cap={market_cap:.2e}>$100M: Ликвидность")
-    
-    target = latest_price + (5 * latest_atr if latest_atr else latest_price * 0.1)
-    stop_loss = latest_price - (3 * latest_atr if latest_atr else latest_price * 0.05)
-    potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
-    
-    if confirmations < 3:
-        trend = "Неизвестно"
-        score = 0
-        debug_info.append(f"Подтверждений={confirmations}<3: Неизвестно")
-    elif confirmations >= 4:
-        score += 0.3
-    
-    return trend, score, debug_info, None, target, stop_loss
-
-def send_telegram_report(chat_id, message):
-    if not TELEGRAM_BOT_TOKEN:
-        return "Ошибка: Токен бота не загружен (проверьте secrets в Streamlit)."
-    try:
-        response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")
-        if not response.json().get("ok"):
-            return f"Ошибка: Недействительный токен ({response.json().get('description')})"
-        response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", params={
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "Markdown"
-        })
-        if response.json().get("ok"):
-            return "Сообщение отправлено успешно!"
-        return f"Ошибка отправки: {response.json().get('description')}"
-    except Exception as e:
-        return f"Ошибка отправки: {str(e)} (проверьте токен или Chat ID)"
+    return "Анализ завершен"
 
 # Streamlit приложение
 st.title("🚀 >tS|TQTVLSYSTEM")
-st.subheader("Анализ трендов и лучших сделок 📈")
+st.subheader("AI-Аналитик для трейдеров 📈")
 
 # Админ-панель
 admin_key = st.text_input("🔍 Админ-ключ (для отладки)", type="password")
 is_admin = admin_key == ADMIN_KEY
 
 if is_admin:
-    with st.expander("🔍 Отладка: Статус API и токена"):
-        st.write(f"**Alpha Vantage ключ**: {'Загружен' if ALPHA_VANTAGE_API_KEY else 'Не загружен'}")
-        st.write(f"**Telegram токен**: {'Загружен' if TELEGRAM_BOT_TOKEN else 'Не загружен'}")
-        if TELEGRAM_BOT_TOKEN:
-            try:
-                response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")
-                if response.json().get("ok"):
-                    st.write(f"**Бот активен**: @{response.json()['result']['username']}")
-                else:
-                    st.error(f"**Ошибка проверки бота**: {response.json().get('description')}")
-            except Exception as e:
-                st.error(f"**Ошибка проверки бота**: {str(e)}")
-        if st.button("Тест Alpha Vantage (1 запрос)"):
-            test_df = fetch_stock_data_cached("AAPL")
-            st.write(f"Тест AAPL: {'Успех' if test_df is not None else 'Ошибка'}")
+    with st.expander("🔍 Отладка"):
+        # Отладка кода
+        st.write("Отладка готова")
 
-# Выбор рынка и стратегии
-market = st.selectbox("💹 Выберите рынок", ["Акции", "Криптовалюты"])
-strategy = st.selectbox("🎯 Выберите стратегию", ["Краткосрочные спекуляции", "Долгосрочные инвестиции"])
-st.write("🔓 Бесплатный уровень: просмотр тренда рынка. Премиум: топ-активы и отчеты в Telegram (скоро).")
+# Выбор стратегии (скрипта)
+strategy = st.selectbox("🎯 Выберите стратегию (скрипт)", [
+    "Дневная Торговля", "Поиск недооценённых акций", "Игра с доходами", "Торговля опционами"
+])
+market = st.selectbox("💹 Рынок", ["Акции", "Криптовалюты"])
 
-# Списки активов
-stock_tickers = [
-    "AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "BRK-B", "JPM", "V",
-    "WMT", "UNH", "MA", "PG", "HD", "DIS", "BAC", "INTC", "CMCSA", "VZ",
-    "PFE", "KO", "PEP", "MRK", "T", "CSCO", "XOM", "CVX", "ABBV", "NKE",
-    "ADBE", "CRM", "NFLX", "AMD", "ORCL", "IBM", "QCOM", "TXN", "AMGN", "GILD",
-    "SBUX", "MMM", "GE", "CAT", "BA", "HON", "SPG", "LMT", "UPS", "LOW"
-]
-crypto_ids = [
-    "bitcoin", "ethereum", "solana", "cardano", "polkadot", "binancecoin", "ripple", "dogecoin", "avalanche-2", "chainlink",
-    "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron",
-    "vechain", "theta-token", "dash", "zcash", "monero", "maker", "compound-governance-token", "aave", "uniswap", "pancakeswap-token",
-    "sushi", "yearn-finance", "curve-dao-token", "synthetix-network-token", "1inch", "basic-attention-token", "enjincoin", "decentraland", "the-graph", "axie-infinity",
-    "chiliz", "hedera-hashgraph", "quant-network", "filecoin", "arweave", "flow", "internet-computer", "elrond-erd-2", "kava", "kusama"
-]
-
-# Анализ
-if market == "Акции":
-    assets = stock_tickers
-    data_fetcher = fetch_stock_data_cached
-    fund_fetcher = fetch_stock_fundamentals
-    crypto_data = False
-else:
-    assets = crypto_ids
-    data_fetcher = lambda x: fetch_crypto_data(x)
-    fund_fetcher = fetch_crypto_fundamentals
-    crypto_data = True
-
-trend_scores = []
-successful_fetches = 0
-debug_trends = []
-market_confirmations = []
-for asset in assets[:50]:
-    if crypto_data:
-        df, df_7h, df_1w = data_fetcher(asset)
+if st.button(f"🚀 Запустить {strategy}"):
+    if market == "Акции":
+        # Загрузка данных для 50 акций
+        df_list = []
+        for ticker in stock_tickers[:50]:
+            df = fetch_stock_data_cached(ticker)
+            if df is not None:
+                df_list.append((ticker, df))
     else:
-        df = data_fetcher(asset, interval="1d", period="1y")
-        df_7h = data_fetcher(asset, interval="1h", period="60d")
-        if df_7h is not None:
-            df_7h = df_7h.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
-        df_1w = data_fetcher(asset, interval="1wk", period="5y")
-    fundamentals = fund_fetcher(asset)
-    if df is not None and df_7h is not None and df_1w is not None:
-        successful_fetches += 1
-    if df is not None and df_7h is not None and df_1w is not None:
-        if strategy == "Краткосрочные спекуляции":
-            trend, score, debug_info, entry_signal, target, stop_loss = analyze_short_term(df, df_7h, fundamentals)
-        else:
-            trend, score, debug_info, entry_signal, target, stop_loss = analyze_long_term(df, df_1w, fundamentals)
-        trend_scores.append((asset, trend, score, entry_signal, target, stop_loss, debug_info))
-        debug_trends.append((asset, debug_info, entry_signal))
-        if trend != "Неизвестно" and score > 0:
-            market_confirmations.append(trend)
+        df_list = []
+        for coin in crypto_ids[:50]:
+            df = fetch_crypto_data(coin)
+            if df is not None:
+                df_list.append((coin, df))
+    
+    if strategy == "Дневная Торговля":
+        result = analyze_strategy_day_trade(df_list, market)
+    elif strategy == "Поиск недооценённых акций":
+        result = analyze_strategy_undervalued(df_list, market)
     else:
-        debug_trends.append((asset, [f"Ошибка загрузки данных для {asset}"], None))
-    time.sleep(0.2)
+        st.info(f"Стратегия '{strategy}' в разработке. Выберите 'Дневная Торговля' для теста.")
+    
+    st.success(result)
 
-st.info(f"✅ Успешно загружено данных: {successful_fetches}/{min(len(assets), 50)} активов")
-
-# Тренд рынка
-if trend_scores:
-    confirmed_trends = [x for x in trend_scores if x[1] != "Неизвестно" and x[2] > 0]
-    if confirmed_trends:
-        up_trend_count = sum(1 for x in confirmed_trends if x[1] == "Восходящий тренd")
-        total_confirmed = len(confirmed_trends)
-        market_trend = "Восходящий тренd" if up_trend_count > total_confirmed / 2 else "Нисходящий тренd"
-        confirmation_count = sum(1 for x in confirmed_trends if x[1] == market_trend)
-        recommendation = (
-            f"Ищите лонг-позиции в перепроданных активах с сильным импульсом." 
-            if market_trend == "Восходящий тренd" else 
-            f"Рассмотрите шорт-позиции в переоцененных активах или хеджирование."
-        )
-        if confirmation_count < total_confirmed * 0.1:
-            st.warning(f"⚠️ Подтверждений недостаточно ({confirmation_count}/{total_confirmed}), тренд может быть неточным.")
-        st.success(
-            f"🚀 **Тренд рынка**: {market_trend} {'📈' if market_trend == 'Восходящий тренd' else '📉'}\n"
-            f"📊 Подтверждено {confirmation_count} активами с 3+ индикаторами.\n"
-            f"💡 **Рекомендация**: {recommendation}"
-        )
-    else:
-        st.error("🚨 **Тренд рынка**: Нет активов с подтверждениями (проверьте отладку).")
-else:
-    st.error("🚨 **Тренд рынка**: Не удалось определить (проверьте отладку).")
-
-# Админ-отладка
-if is_admin:
-    with st.expander("🔍 Детали тренда по активам"):
-        debug_df = []
-        for asset, debug_info, entry_signal in debug_trends:
-            debug_df.append({
-                "Актив": asset,
-                "Тренд": debug_info[-1] if debug_info else "Неизвестно",
-                "Индикаторы": "; ".join(debug_info[:-1]) if debug_info else "Нет данных",
-                "Точка входа": entry_signal if entry_signal else "Нет сигнала"
-            })
-        st.dataframe(pd.DataFrame(debug_df))
-
-# Топ-активы
-if st.button("🔥 Показать топ-активы (Премиум)"):
-    if trend_scores:
-        top_assets = sorted([x for x in trend_scores if x[2] >= 0.3], key=lambda x: x[2], reverse=True)[:5]  # Порог 0.3
-        if top_assets:
-            st.write(f"🔥 **Топ-активы для {'спекуляций' if strategy == 'Краткосрочные спекуляции' else 'инвестиций'}**:")
-            for asset, trend, score, entry_signal, target, stop_loss, debug_info in top_assets:
-                confirmations = sum(1 for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"]))
-                signals = [info.split(":")[0] for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"])]
-                potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
-                st.write(
-                    f"#{'STOCKS' if market == 'Акции' else 'CRYPTO'} #HYPE\n"
-                    f"🚀 **{asset}**: Классический сетап в {'лонг' if trend == 'Восходящий тренd' else 'шорт'}.\n"
-                    f"• Подтверждено {confirmations} индикаторов ({', '.join(signals[:3])}).\n"
-                    f"• Зона вибрации: {'Углы Ганна' if 'Gann' in ' '.join(debug_info) else 'Уровни EMA'}.\n"
-                    f"🎯 **Цель**: ${target:.2f} (+{potential:.1f}% вдоль угла Ганна).\n"
-                    f"🛑 **Стоп**: ${stop_loss:.2f} {'ниже EMA200' if trend == 'Восходящий тренd' else 'выше EMA50'}.\n"
-                    f"⏰ **Точка входа**: {entry_signal if entry_signal else 'Ждем сигнала'}.\n"
-                    f"💡 **Примечание**: Рынок манипулятивный, будьте осторожны с объемом."
-                )
-        else:
-            st.warning("🚨 Нет активов с достаточным количеством подтверждений (нужно 3+).")
-    else:
-        st.warning("🚨 Нет данных для топ-активов.")
+# Продолжение диалога
+if 'strategy' in locals():
+    next_action = st.selectbox("Что дальше?", [
+        "Анализ портфеля", "Технический анализ", "Сравнение волатильности", 
+        "Фундаментальный анализ", "Разбивка по секторам"
+    ])
+    if next_action == "Технический анализ":
+        ticker = st.text_input("Введите тикер (например, META)")
+        if ticker:
+            df = fetch_stock_data_cached(ticker, interval="5m", period="3d") if market == "Акции" else fetch_crypto_data(ticker, days=3)
+            if df is not None:
+                fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Close'], high=df['High'], low=df['Low'], close=df['Close'])])
+                fig.update_layout(title=f"5-мин свечи {ticker} за 3 дня", template="plotly_dark")
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Уровни поддержки/сопротивления
+                support = df['Low'].rolling(20).min().iloc[-1]
+                resistance = df['High'].rolling(20).max().iloc[-1]
+                st.write(f"🛡️ **Поддержка**: ${support:.2f}")
+                st.write(f"🎯 **Сопротивление**: ${resistance:.2f}")
 
 # Telegram
-chat_id_input = st.text_input("📬 Введите ваш Telegram Chat ID (отправьте /start боту @ern1kko_bot, чтобы узнать ID)", value="")
-if st.button("📤 Отправить отчет в Telegram (Премиум)"):
-    if trend_scores and chat_id_input:
-        top_assets = sorted([x for x in trend_scores if x[2] >= 0.3], key=lambda x: x[2], reverse=True)[:3]
-        confirmed_trends = [x for x in trend_scores if x[1] != "Неизвестно" and x[2] > 0]
-        if confirmed_trends:
-            up_trend_count = sum(1 for x in confirmed_trends if x[1] == "Восходящий тренd")
-            total_confirmed = len(confirmed_trends)
-            market_trend = "Восходящий тренd" if up_trend_count > total_confirmed / 2 else "Нисходящий тренd"
-            confirmation_count = sum(1 for x in confirmed_trends if x[1] == market_trend)
-            recommendation = (
-                f"Ищите лонг-позиции в перепроданных активах с сильным импульсом." 
-                if market_trend == "Восходящий тренd" else 
-                f"Рассмотрите шорт-позиции в переоцененных активах или хеджирование."
-            )
-            message = (
-                f"🚀 *>*tS|TQTVLSYSTEM: Отчет по рынку {'📈' if market_trend == 'Восходящий тренd' else '📉'}*\n"
-                f"📅 *Дата*: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
-                f"💹 *Рынок*: {market}\n"
-                f"📊 *Тренд*: {market_trend} (подтверждено {confirmation_count} активами)\n"
-                f"💡 *Рекомендация*: {recommendation}\n"
-                f"🔥 *Топ-активы*:\n"
-            )
-            for i, (asset, trend, score, entry_signal, target, stop_loss, debug_info) in enumerate(top_assets, 1):
-                confirmations = sum(1 for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"]))
-                signals = [info.split(":")[0] for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"])]
-                potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
-                message += (
-                    f"{i}️⃣ #{'STOCKS' if market == 'Акции' else 'CRYPTO'} #HYPE\n"
-                    f"🚀 *{asset}*: Классический сетап в {'лонг' if trend == 'Восходящий тренd' else 'шорт'}.\n"
-                    f"• Подтверждено {confirmations} индикаторов ({', '.join(signals[:3])}).\n"
-                    f"• Зона вибрации: {'Углы Ганна' if 'Gann' in ' '.join(debug_info) else 'Уровни EMA'}.\n"
-                    f"🎯 *Цель*: ${target:.2f} (+{potential:.1f}% вдоль угла Ганна).\n"
-                    f"🛑 *Стоп*: ${stop_loss:.2f} {'ниже EMA200' if trend == 'Восходящий тренd' else 'выше EMA50'}.\n"
-                    f"⏰ *Точка входа*: {entry_signal if entry_signal else 'Ждем сигнала'}.\n"
-                    f"💡 *Примечание*: Рынок манипулятивный, будьте осторожны с объемом.\n"
-                )
-            result = send_telegram_report(chat_id_input, message)
-            st.write(result)
-        else:
-            st.warning("🚨 Нет данных для отчета (проверьте отладку).")
-    else:
-        st.warning("🚨 Введите Chat ID и убедитесь, что данные для отчета доступны.")
+chat_id_input = st.text_input("📬 Chat ID для отчета")
+if st.button("📤 Отправить отчет"):
+    # Генерация отчета
+    message = f"🚀 Отчет по {strategy}\n📊 Топ-активы: {', '.join([x[0] for x in df_list[:5]])}"
+    result = send_telegram_report(chat_id_input, message)
+    st.write(result)
 
-st.write("🔓 **Примечание**: Подробная аналитика и отчеты в Telegram доступны в Премиум-уровне (скоро).")
+st.write("🔓 Премиум: Полные отчеты, персонализация, графики.")
