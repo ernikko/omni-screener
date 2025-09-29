@@ -1,74 +1,44 @@
 body {
-  font-family: "Arial", sans-serif;
-  background: #f5f6fa;
-  color: #333;
+  font-family: 'Inter', Arial, sans-serif;
+  background: #f8f9fa;
   margin: 0;
+  padding: 0;
+  color: #333;
 }
 
-.container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 20px;
+header, footer {
+  background: #0d6efd;
+  color: white;
 }
 
-.header {
-  background-color: #2c3e50;
-  color: #fff;
-  padding: 20px 0;
+header h1, header span {
+  color: white;
+}
+
+.table-responsive {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+table th, table td {
   text-align: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  vertical-align: middle;
 }
 
-.actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+.price-up {
+  color: green;
   font-weight: bold;
 }
 
-.btn-success {
-  background-color: #27ae60;
-  color: #fff;
+.price-down {
+  color: red;
+  font-weight: bold;
 }
 
-.btn-success:hover {
-  background-color: #219150;
+button {
+  transition: 0.2s;
 }
 
-.table-wrapper {
-  background: #fff;
-  padding: 20px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-tr:hover {
-  background-color: #f1f1f1;
-}
-
-.footer {
-  text-align: center;
-  padding: 15px;
-  background-color: #2c3e50;
-  color: white;
-  margin-top: 20px;
+button:hover {
+  opacity: 0.85;
 }
