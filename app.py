@@ -76,7 +76,7 @@ st.markdown("""
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     table {
-        margin: 20px auto;
+        margin: 0 auto;
         border-collapse: collapse;
         background: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
