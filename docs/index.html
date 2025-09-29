@@ -3,33 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Omni Screener - Биржа</title>
+  <title>TQTVL System - Биржа товаров</title>
   <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <header>
-    <h1>Omni Screener - Биржа</h1>
+    <h1>TQTVL System - Биржа товаров</h1>
   </header>
 
   <main>
-    <button id="createProductBtn">Создать новый товар</button>
-    <table id="productsTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Название</th>
-          <th>Цена</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Здесь будут товары -->
-      </tbody>
-    </table>
+    <section class="controls">
+      <button id="createProductBtn">Создать новый товар</button>
+    </section>
+
+    <section class="table-container">
+      <table id="productsTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Цена</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Товары будут тут -->
+        </tbody>
+      </table>
+    </section>
   </main>
 
   <footer>
-    © 2025 Omni Screener
+    © 2025 TQTVL System
   </footer>
 
   <script src="main.js"></script>
