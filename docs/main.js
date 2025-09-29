@@ -1,22 +1,17 @@
-const createProductBtn = document.getElementById("createProductBtn");
+const API_URL = "https://omni-screener.onrender.com"; // Замените на свой Render URL
 const productsTableBody = document.querySelector("#productsTable tbody");
+const createProductBtn = document.getElementById("createProductBtn");
 
-// Замените на публичный URL вашего бекэнда Render
-const API_URL = "https://omni-screener.onrender.com";
-
-// Функция для обновления таблицы товаров
+// Загрузка и отображение товаров
 async function loadProducts() {
   try {
     const res = await fetch(`${API_URL}/get_products`);
     const products = await res.json();
 
-    // Очищаем таблицу
-    productsTableBody.innerHTML = "";
+    productsTableBody.innerHTML = ""; // очищаем таблицу
 
-    // Добавляем строки
     products.forEach(product => {
       const row = document.createElement("tr");
-
       row.innerHTML = `
         <td>${product.id}</td>
         <td>${product.name}</td>
@@ -39,13 +34,14 @@ async function loadProducts() {
 
   } catch (err) {
     console.error("Ошибка при загрузке товаров:", err);
+    alert("Не удалось загрузить товары. Проверьте бекэнд.");
   }
 }
 
-// Создание товара
+// Создание нового товара
 createProductBtn.addEventListener("click", async () => {
-  const name = prompt("Название товара:");
-  const price = parseFloat(prompt("Цена товара:"));
+  const name = prompt("Введите название товара:");
+  const price = parseFloat(prompt("Введите стартовую цену товара:"));
 
   if (!name || isNaN(price)) return alert("Некорректные данные");
 
@@ -56,14 +52,18 @@ createProductBtn.addEventListener("click", async () => {
       body: JSON.stringify({ name, price })
     });
 
-    if (!response.ok) throw new Error("Ошибка при создании товара");
-
-    loadProducts(); // обновляем таблицу
+    const product = await response.json();
+    if (product && product.id) {
+      alert(`Товар "${product.name}" создан!`);
+      loadProducts(); // обновляем таблицу
+    } else {
+      alert("Не удалось создать товар");
+    }
   } catch (err) {
-    console.error(err);
-    alert("Не удалось создать товар");
+    console.error("Ошибка при создании товара:", err);
+    alert("Ошибка при создании товара. Проверьте бекэнд.");
   }
 });
 
-// Загрузка товаров при старте
+// Загрузка товаров при старте страницы
 loadProducts();
