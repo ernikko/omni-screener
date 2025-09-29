@@ -20,22 +20,21 @@ footer {
   font-weight: 500;
 }
 
-table th {
+table th, table td {
   text-align: center;
+}
+
+table th {
   font-weight: 600;
 }
 
-table td {
-  text-align: center;
-}
-
 .price-up {
-  color: #27ae60; /* зеленый рост */
+  color: #27ae60;
   font-weight: 600;
 }
 
 .price-down {
-  color: #c0392b; /* красный падение */
+  color: #c0392b;
   font-weight: 600;
 }
 
