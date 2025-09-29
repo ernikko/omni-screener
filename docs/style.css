@@ -2,14 +2,27 @@ body {
   font-family: 'Inter', sans-serif;
   background-color: #f7f8fa;
   color: #333;
+  margin: 0;
 }
 
 header, footer {
   font-weight: 500;
 }
 
+header {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  font-weight: 500;
+}
+
 table th {
   text-align: center;
+  font-weight: 600;
 }
 
 table td {
@@ -17,19 +30,22 @@ table td {
 }
 
 .price-up {
-  color: #27ae60;
+  color: #27ae60; /* зеленый рост */
   font-weight: 600;
 }
 
 .price-down {
-  color: #c0392b;
+  color: #c0392b; /* красный падение */
   font-weight: 600;
 }
 
 button {
   font-weight: 500;
+  border-radius: 5px;
 }
 
-h2 {
-  font-weight: 600;
+.table-responsive {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
 }
