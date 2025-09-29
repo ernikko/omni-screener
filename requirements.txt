@@ -3,5 +3,4 @@ pandas
 requests
 ta
 numpy
-python-telegram-bot
 yfinance
