@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import yfinance as yf
 import numpy as np
 import time
+import logging  # Добавлен импорт logging
 
 # Списки активов (500 акций, 50 криптовалют)
 stock_tickers = [
@@ -31,25 +32,29 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
     :root {
-        --primary-bg: #0a0a0a;
-        --secondary-bg: #1a1a1a;
+        --primary-bg: #1c1c1c;
+        --secondary-bg: #171717;
         --text-color: #e0e0e0;
-        --accent-color: #4a90e2;
+        --accent-color: #ff4500; /* Вдохновлено Xynth */
         --shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
     }
     .stApp {
-        background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+        background: linear-gradient(180deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
         color: var(--text-color);
         font-family: 'Roboto', sans-serif;
+        height: 100vh;
+        overflow-y: hidden;
     }
     .stContainer {
         max-width: 950px;
         margin: 0 auto;
         padding: 40px 25px;
         text-align: center;
-        background: rgba(15, 15, 15, 0.95);
+        background: rgba(20, 20, 20, 0.95);
         border-radius: 15px;
         box-shadow: var(--shadow);
+        height: 90vh; /* Полная высота с учетом отступов */
+        overflow-y: auto;
     }
     .stMetric > label {
         color: var(--text-color);
@@ -106,14 +111,46 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-color: var(--accent-color);
     }
+    .status-panel {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 20px 0;
+    }
+    .status-box {
+        width: 100px;
+        height: 100px;
+        background: #333;
+        margin: 5px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #fff;
+    }
+    .status-box.active {
+        background: var(--accent-color);
+    }
+    .status-center {
+        width: 200px;
+        height: 150px;
+        background: #4a90e2;
+        color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 10px;
+    }
     .visualization {
-        display: none;
         text-align: center;
     }
     .visualization img {
         max-width: 100%;
         border-radius: 10px;
         box-shadow: var(--shadow);
+    }
+    ::-webkit-scrollbar {
+        display: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -252,6 +289,15 @@ def analyze_strategy_day_trade(df_list, market):
                 for x in top_15
             ])
             st.table(top_df)
+    
+    # Панель статуса (вдохновлена "position" из Xynth)
+    with st.container():
+        st.markdown('<div class="status-panel">', unsafe_allow_html=True)
+        for i in range(4):
+            color = "#ff4500" if i == 1 else "#333"  # Центральный акцент
+            st.markdown(f'<div class="status-box" style="background: {color};">{"367" if i == 1 else "0"}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="status-center">Анализ: 100%</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     return "Анализ завершен"
 
