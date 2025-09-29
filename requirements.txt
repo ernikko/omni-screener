@@ -1,4 +1,6 @@
 streamlit
-requests
 pandas
-yfinance
+requests
+ta
+numpy
+python-telegram-bot
