@@ -1,52 +1,61 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
+import uuid
 
 app = FastAPI()
 
-# Временная база в памяти (для MVP, потом заменим на Supabase/Postgres)
-products: Dict[int, dict] = {}
-product_id_counter = 1
+# Разрешаем доступ с любого фронта
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class Product(BaseModel):
+# В памяти храним товары
+products: Dict[str, dict] = {}
+
+# Модель для добавления товара
+class ProductInput(BaseModel):
     name: str
     start_price: float
     min_price: float
 
-class UpdateDemand(BaseModel):
-    product_id: int
-    views: int  # условно: сколько раз карточку посмотрели
+# Модель для обновления цены
+class UpdateInput(BaseModel):
+    product_id: str
+    views: int = 0
 
+# Получить все товары
+@app.get("/get_products")
+def get_products():
+    return {"products": products}
+
+# Добавить товар
 @app.post("/add_product")
-def add_product(product: Product):
-    global product_id_counter
-    products[product_id_counter] = {
-        "id": product_id_counter,
-        "name": product.name,
-        "start_price": product.start_price,
-        "min_price": product.min_price,
-        "current_price": product.start_price,
-        "views": 0
+def add_product(item: ProductInput):
+    product_id = str(uuid.uuid4())
+    products[product_id] = {
+        "id": product_id,
+        "name": item.name,
+        "start_price": item.start_price,
+        "min_price": item.min_price,
+        "current_price": item.start_price,
+        "last_change": 0
     }
-    product_id_counter += 1
-    return {"status": "ok", "products": products}
+    return {"success": True, "products": products}
 
+# Обновить цену товара
 @app.post("/update_price")
-def update_price(data: UpdateDemand):
-    product = products.get(data.product_id)
-    if not product:
-        return {"error": "Product not found"}
-    product["views"] += data.views
-    # простая логика: чем больше просмотров, тем выше цена
-    product["current_price"] = max(
-        product["min_price"], 
-        product["start_price"] * (1 + product["views"] * 0.05)  # +5% за каждые 10 просмотров
-    )
-    return {"status": "updated", "product": product}
-
-@app.get("/get_product/{product_id}")
-def get_product(product_id: int):
-    product = products.get(product_id)
-    if not product:
-        return {"error": "Product not found"}
-    return product
+def update_price(update: UpdateInput):
+    if update.product_id not in products:
+        return {"error": "Товар не найден"}
+    product = products[update.product_id]
+    # Простая динамика: цена растет на 1% за каждый просмотр
+    change = product["current_price"] * 0.01 * update.views
+    product["current_price"] += change
+    product["last_change"] = change
+    products[update.product_id] = product
+    return {"success": True, "product": product}
