@@ -131,7 +131,7 @@ def analyze_strategy_day_trade(df_list, market):
     
     st.subheader("🏆 Пять лучших акций")
     top_df = pd.DataFrame([
-        {"Акция": x[0], "Cap ($T)", x[6]/1e12, "ATR %": x[3], "Бета": x[5]} for x in top_15[:5]
+        {"Акция": x[0], "Cap ($T)": x[6]/1e12, "ATR %": x[3], "Бета": x[5]} for x in top_15[:5]
     ])
     st.table(top_df)
     
