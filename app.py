@@ -1,12 +1,11 @@
+f# app.py
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict
-import uuid
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Разрешаем доступ с любого фронта
+# Разрешаем запросы с любого фронта
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,48 +13,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# В памяти храним товары
-products: Dict[str, dict] = {}
-
-# Модель для добавления товара
-class ProductInput(BaseModel):
+# Структура товара
+class Product(BaseModel):
     name: str
-    start_price: float
-    min_price: float
+    price: float
 
-# Модель для обновления цены
-class UpdateInput(BaseModel):
-    product_id: str
-    views: int = 0
+# Хранилище товаров (пока в памяти)
+products = []
+product_id = 1
 
-# Получить все товары
-@app.get("/get_products")
-def get_products():
-    return {"products": products}
-
-# Добавить товар
 @app.post("/add_product")
-def add_product(item: ProductInput):
-    product_id = str(uuid.uuid4())
-    products[product_id] = {
-        "id": product_id,
-        "name": item.name,
-        "start_price": item.start_price,
-        "min_price": item.min_price,
-        "current_price": item.start_price,
-        "last_change": 0
-    }
-    return {"success": True, "products": products}
+async def add_product(product: Product):
+    global product_id
+    new_product = {"id": product_id, "name": product.name, "price": product.price}
+    products.append(new_product)
+    product_id += 1
+    return new_product
 
-# Обновить цену товара
-@app.post("/update_price")
-def update_price(update: UpdateInput):
-    if update.product_id not in products:
-        return {"error": "Товар не найден"}
-    product = products[update.product_id]
-    # Простая динамика: цена растет на 1% за каждый просмотр
-    change = product["current_price"] * 0.01 * update.views
-    product["current_price"] += change
-    product["last_change"] = change
-    products[update.product_id] = product
-    return {"success": True, "product": product}
+@app.get("/get_products")
+async def get_products():
+    return products
