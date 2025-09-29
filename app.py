@@ -10,6 +10,7 @@ import time
 # API ключ и Telegram токен
 ALPHA_VANTAGE_API_KEY = st.secrets.get("ALPHA_VANTAGE_API_KEY", "NFNQC9SQK6XF7CY3")
 TELEGRAM_BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
+ADMIN_KEY = st.secrets.get("ADMIN_KEY", "mysecretkey123")  # Установите в secrets
 
 # Кэширование данных
 @st.cache_data(ttl=300)
@@ -36,6 +37,9 @@ def fetch_stock_data_cached(ticker, use_alpha=True):
         if not df.empty:
             df = df[["Close", "Volume", "High", "Low"]]
             return df
+        else:
+            st.warning(f"Нет данных для {ticker} в yfinance")
+            return None
     except Exception as e:
         st.warning(f"Ошибка yfinance для {ticker}: {str(e)}")
     return None
@@ -49,27 +53,12 @@ def fetch_stock_data_7h(ticker):
             df = df[["Close", "Volume", "High", "Low"]]
             df_7h = df.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
             return df_7h
+        else:
+            st.warning(f"Нет 7H данных для {ticker} в yfinance")
+            return None
     except Exception as e:
         st.warning(f"Ошибка yfinance (7H) для {ticker}: {str(e)}")
     return None
-
-@st.cache_data(ttl=300)
-def fetch_crypto_data(coin_id, days=60):
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        df = pd.DataFrame({
-            'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
-            'Close': [x[1] for x in data['prices']],
-            'Volume': [x[1] for x in data['total_volumes']],
-            'High': [x[1] for x in data['prices']],
-            'Low': [x[1] for x in data['prices']]
-        })
-        df.set_index('Date', inplace=True)
-        df_7h = df.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
-        return df, df_7h
-    return None, None
 
 @st.cache_data(ttl=300)
 def fetch_stock_quote_cached(ticker):
@@ -95,16 +84,6 @@ def fetch_stock_quote_cached(ticker):
                 return float(quote.get("08. bid", 0)), float(quote.get("09. ask", 0)), None, None
         except:
             return None, None, None, None
-
-@st.cache_data(ttl=300)
-def fetch_crypto_fundamentals(coin_id):
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        market_cap = data.get("market_data", {}).get("market_cap", {}).get("usd", None)
-        return market_cap
-    return None
 
 def calculate_gann_angles(df):
     if len(df) < 2:
@@ -136,8 +115,8 @@ def calculate_fibonacci_levels(df):
         return "Нисходящий (ниже 61.8%)"
     return None
 
-def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None, market_cap=None):
-    if df is None or len(df) < 30 or df_7h is None:
+def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None):
+    if df is None or len(df) < 30 or df_7h is None or len(df_7h) < 10:
         return "Неизвестно", 0, [], None
     
     # Индикаторы на 1D
@@ -157,7 +136,7 @@ def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None, market
     df['Ichimoku_Conversion'] = ta.trend.IchimokuIndicator(df['High'], df['Low']).ichimoku_conversion_line()
     df['Ichimoku_Base'] = ta.trend.IchimokuIndicator(df['High'], df['Low']).ichimoku_base_line()
     
-    # Индикаторы на 7H (для точек входа)
+    # Индикаторы на 7H
     df_7h['RSI_7h'] = ta.momentum.RSIIndicator(df_7h['Close'], window=14).rsi()
     df_7h['Stochastic_7h'] = ta.momentum.StochasticOscillator(df_7h['High'], df_7h['Low'], df_7h['Close']).stoch()
     
@@ -319,7 +298,6 @@ def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None, market
         score += 0.05
         debug_info.append(f"Fibonacci: {fib_trend}")
     
-    # Фундаментальные метрики
     if pe_ratio and pe_ratio < 15:
         if trend == "Восходящий тренд":
             confirmations += 1
@@ -330,18 +308,13 @@ def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None, market
             confirmations += 1
         score += 0.05
         debug_info.append(f"EPS={eps:.2f}>0: Положительная прибыль")
-    if market_cap and market_cap > 1_000_000_000:
-        if trend == "Восходящий тренд":
-            confirmations += 1
-        score += 0.05
-        debug_info.append(f"Market Cap={market_cap/1e9:.2f}B>1B: Крупная капитализация")
     
     # Точка входа на 7H
     if latest_rsi_7h > 70 and latest_stoch_7h > 80:
-        entry_signal = "Покупка (RSI_7h>70, Stochastic_7h>80)"
+        entry_signal = f"Покупка (RSI_7h={latest_rsi_7h:.2f}>70, Stochastic_7h={latest_stoch_7h:.2f}>80)"
         debug_info.append(entry_signal)
     elif latest_rsi_7h < 30 and latest_stoch_7h < 20:
-        entry_signal = "Продажа (RSI_7h<30, Stochastic_7h<20)"
+        entry_signal = f"Продажа (RSI_7h={latest_rsi_7h:.2f}<30, Stochastic_7h={latest_stoch_7h:.2f}<20)"
         debug_info.append(entry_signal)
     
     if gann_trend == "Сильный тренд" and trend in ["Восходящий тренд", "Нисходящий тренд"]:
@@ -349,15 +322,18 @@ def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None, market
         score += 0.1
         debug_info.append(f"Gann (7H): {gann_trend}")
     
-    # Порог подтверждений
+    # Цель и стоп-лосс
+    target = latest_price + latest_atr * 2 if latest_atr else latest_price * 1.05
+    stop_loss = latest_price - latest_atr * 1.5 if latest_atr else latest_price * 0.95
+    
     if confirmations < 3:
         trend = "Неизвестно"
         score = 0
         debug_info.append(f"Подтверждений={confirmations}<3: Неизвестно")
     elif confirmations >= 4:
-        score += 0.2  # Бонус для топ-активов
+        score += 0.2
     
-    return trend, score, debug_info, entry_signal
+    return trend, score, debug_info, entry_signal, target, stop_loss
 
 def send_telegram_report(chat_id, message):
     if not TELEGRAM_BOT_TOKEN:
@@ -380,28 +356,32 @@ def send_telegram_report(chat_id, message):
 st.title(">tS|TQTVLSYSTEM")
 st.subheader("Анализ трендов и лучших сделок")
 
-# Отладка
-with st.expander("Отладка: Статус API и токена"):
-    st.write(f"**Alpha Vantage ключ**: {'Загружен' if ALPHA_VANTAGE_API_KEY else 'Не загружен'}")
-    st.write(f"**Telegram токен**: {'Загружен' if TELEGRAM_BOT_TOKEN else 'Не загружен'}")
-    if TELEGRAM_BOT_TOKEN:
-        try:
-            response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")
-            if response.json().get("ok"):
-                st.write(f"**Бот активен**: @{response.json()['result']['username']}")
-            else:
-                st.error(f"**Ошибка проверки бота**: {response.json().get('description')}")
-        except Exception as e:
-            st.error(f"**Ошибка проверки бота**: {str(e)}")
-    if st.button("Тест Alpha Vantage (1 запрос)"):
-        test_df = fetch_stock_data_cached("AAPL")
-        st.write(f"Тест AAPL: {'Успех' if test_df is not None else 'Ошибка'}")
+# Админ-панель
+admin_key = st.text_input("Админ-ключ (для отладки)", type="password")
+is_admin = admin_key == ADMIN_KEY
+
+if is_admin:
+    with st.expander("Отладка: Статус API и токена"):
+        st.write(f"**Alpha Vantage ключ**: {'Загружен' if ALPHA_VANTAGE_API_KEY else 'Не загружен'}")
+        st.write(f"**Telegram токен**: {'Загружен' if TELEGRAM_BOT_TOKEN else 'Не загружен'}")
+        if TELEGRAM_BOT_TOKEN:
+            try:
+                response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")
+                if response.json().get("ok"):
+                    st.write(f"**Бот активен**: @{response.json()['result']['username']}")
+                else:
+                    st.error(f"**Ошибка проверки бота**: {response.json().get('description')}")
+            except Exception as e:
+                st.error(f"**Ошибка проверки бота**: {str(e)}")
+        if st.button("Тест Alpha Vantage (1 запрос)"):
+            test_df = fetch_stock_data_cached("AAPL")
+            st.write(f"Тест AAPL: {'Успех' if test_df is not None else 'Ошибка'}")
 
 # Выбор рынка
 market = st.selectbox("Выберите рынок", ["Акции", "Криптовалюты"])
 st.write("Бесплатный уровень: просмотр тренда рынка. Премиум: топ-активы и отчеты в Telegram (скоро).")
 
-# Списки активов (расширенные)
+# Списки активов
 stock_tickers = [
     "AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "BRK-B", "JPM", "V",
     "WMT", "UNH", "MA", "PG", "HD", "DIS", "BAC", "INTC", "CMCSA", "VZ",
@@ -423,66 +403,99 @@ if market == "Акции":
     data_fetcher = fetch_stock_data_cached
     data_fetcher_7h = fetch_stock_data_7h
     quote_fetcher = fetch_stock_quote_cached
-    fund_fetcher = lambda x: None
 else:
     assets = crypto_ids
-    data_fetcher = lambda x: fetch_crypto_data(x)[0]
-    data_fetcher_7h = lambda x: fetch_crypto_data(x)[1]
+    data_fetcher = lambda x: fetch_stock_data_cached(x, use_alpha=False)  # Для крипты используем yfinance, если возможно
+    data_fetcher_7h = fetch_stock_data_7h
     quote_fetcher = lambda x: (None, None, None, None)
-    fund_fetcher = fetch_crypto_fundamentals
 
 trend_scores = []
 successful_fetches = 0
 debug_trends = []
+market_confirmations = []
 for asset in assets[:50]:
     df = data_fetcher(asset)
     df_7h = data_fetcher_7h(asset)
-    if df is not None:
+    if df is not None and df_7h is not None:
         successful_fetches += 1
     bid, ask, pe_ratio, eps = quote_fetcher(asset)
-    market_cap = fund_fetcher(asset)
     if df is not None and df_7h is not None:
-        trend, score, debug_info, entry_signal = analyze_trend(df, df_7h, bid, ask, pe_ratio, eps, market_cap)
-        trend_scores.append((asset, trend, score, entry_signal))
+        trend, score, debug_info, entry_signal, target, stop_loss = analyze_trend(df, df_7h, bid, ask, pe_ratio, eps)
+        trend_scores.append((asset, trend, score, entry_signal, target, stop_loss, debug_info))
         debug_trends.append((asset, debug_info, entry_signal))
+        market_confirmations.append(trend)
+    else:
+        debug_trends.append((asset, [f"Ошибка загрузки данных для {asset}"], None))
     time.sleep(0.2)
 
 st.info(f"Успешно загружено данных: {successful_fetches}/{min(len(assets), 50)} активов")
 
-with st.expander("Детали тренда по активам"):
-    debug_df = []
-    for asset, debug_info, entry_signal in debug_trends:
-        debug_df.append({
-            "Актив": asset,
-            "Тренд": debug_info[-1] if debug_info else "Неизвестно",
-            "Индикаторы": "; ".join(debug_info[:-1]) if debug_info else "Нет данных",
-            "Точка входа (7H)": entry_signal if entry_signal else "Нет сигнала"
-        })
-    st.dataframe(pd.DataFrame(debug_df))
-
+# Тренд рынка
 if trend_scores:
     market_trend = max(set([x[1] for x in trend_scores]), key=[x[1] for x in trend_scores].count)
-    st.success(f"**Тренд рынка**: {market_trend}")
+    confirmation_count = sum(1 for x in trend_scores if x[1] == market_trend)
+    st.success(
+        f"🚀 **Тренд рынка**: {market_trend} 📈\n"
+        f"📊 Подтверждено {confirmation_count} активами с 3+ индикаторами (EMA50>EMA200, RSI>70 и др.).\n"
+        f"💡 **Рекомендация**: {'Ищите возможности для покупок в активах с сильным импульсом.' if market_trend == 'Восходящий тренд' else 'Рассмотрите продажи или хеджирование.'}"
+    )
 else:
     st.error("**Тренд рынка**: Не удалось определить (проверьте отладку).")
 
+# Админ-отладка
+if is_admin:
+    with st.expander("Детали тренда по активам"):
+        debug_df = []
+        for asset, debug_info, entry_signal in debug_trends:
+            debug_df.append({
+                "Актив": asset,
+                "Тренд": debug_info[-1] if debug_info else "Неизвестно",
+                "Индикаторы": "; ".join(debug_info[:-1]) if debug_info else "Нет данных",
+                "Точка входа (7H)": entry_signal if entry_signal else "Нет сигнала"
+            })
+        st.dataframe(pd.DataFrame(debug_df))
+
+# Топ-активы
 if st.button("Показать топ-активы (Премиум)"):
     if trend_scores:
         top_assets = sorted([x for x in trend_scores if x[2] >= 0.4], key=lambda x: x[2], reverse=True)[:10]
         if top_assets:
-            st.write("**Топ-активы для сделок**:")
-            for asset, trend, score, entry_signal in top_assets:
-                st.write(f"- {asset}: {trend} (Скор: {score:.2f}, Точка входа: {entry_signal if entry_signal else 'Нет сигнала'})")
+            st.write("**🔥 Топ-активы для сделок**:")
+            for asset, trend, score, entry_signal, target, stop_loss, debug_info in top_assets:
+                confirmations = sum(1 for info in debug_info if "Восходящий" in info or "Нисходящий" in info or "Накопление" in info)
+                signals = [info.split(":")[0] for info in debug_info if "Восходящий" in info or "Нисходящий" in info or "Накопление" in info]
+                st.write(
+                    f"🚀 **{asset}**: {trend} 📈\n"
+                    f"📊 **Подтверждено**: {confirmations} индикаторов ({', '.join(signals[:3])}).\n"
+                    f"🎯 **Цель**: ${target:.2f}\n"
+                    f"🛑 **Стоп-лосс**: ${stop_loss:.2f}\n"
+                    f"⏰ **Точка входа (7H)**: {entry_signal if entry_signal else 'Ждем сигнала'}"
+                )
         else:
             st.warning("Нет активов с достаточным количеством подтверждений (нужно 4+).")
     else:
         st.warning("Нет данных для топ-активов.")
 
-chat_id_input = st.text_input("Введите ваш Telegram Chat ID (для теста)", value="370110317")
+# Telegram
+chat_id_input = st.text_input("Введите ваш Telegram Chat ID (отправьте /start боту @ern1kko_bot, чтобы узнать ID)", value="370110317")
 if st.button("Отправить отчет в Telegram (Премиум)"):
     if trend_scores:
         top_assets = sorted([x for x in trend_scores if x[2] >= 0.4], key=lambda x: x[2], reverse=True)[:3]
-        message = f"🚀 >tS|TQTVLSYSTEM Отчет\nРынок: {market}\nТренд: {market_trend}\nТоп-активы: {', '.join([f'{x[0]} ({x[3] if x[3] else 'Нет сигнала'})' for x in top_assets])}\nВремя: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        confirmation_count = sum(1 for x in trend_scores if x[1] == market_trend)
+        message = (
+            f"🚀 *>*tS|TQTVLSYSTEM: Отчет по рынку 📈\n"
+            f"📅 *Дата*: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
+            f"💹 *Рынок*: {market}\n"
+            f"📊 *Тренд*: {market_trend} (подтверждено {confirmation_count} активами)\n"
+            f"🔥 *Топ-активы*:\n"
+        )
+        for i, (asset, trend, score, entry_signal, target, stop_loss, _) in enumerate(top_assets, 1):
+            message += (
+                f"{i}️⃣ *{asset}*: {trend} (Скор: {score:.2f})\n"
+                f"   🎯 Цель: ${target:.2f}\n"
+                f"   🛑 Стоп: ${stop_loss:.2f}\n"
+                f"   ⏰ Точка входа: {entry_signal if entry_signal else 'Ждем сигнала'}\n"
+            )
         result = send_telegram_report(chat_id_input, message)
         st.write(result)
     else:
