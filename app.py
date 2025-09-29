@@ -435,7 +435,7 @@ def analyze_strategy_options(df_list, market):
     return "Анализ завершен"
 
 # Streamlit приложение
-st.markdown('<button class="back-button" onclick="window.location.href=\'/\''">⬅</button>', unsafe_allow_html=True)
+st.markdown('<button class="back-button" onclick="window.location.href=\'/\'">⬅</button>', unsafe_allow_html=True)
 with st.container():
     st.title("🚀 >tS|TQTVLSYSTEM")
     st.subheader("AI-Аналитик для трейдеров 📈")
