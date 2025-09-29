@@ -5,7 +5,6 @@ import ta
 from datetime import datetime, timedelta
 import yfinance as yf
 import numpy as np
-from telegram import Bot
 import time
 
 # API ключ и Telegram токен
@@ -17,7 +16,7 @@ TELEGRAM_BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
 def fetch_stock_data_cached(ticker, use_alpha=True):
     if use_alpha:
         try:
-            url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=compact&apikey={ALPHA_VANTAGE_API_KEY}"
+            url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=full&apikey={ALPHA_VANTAGE_API_KEY}"
             response = requests.get(url)
             data = response.json()
             if "Error Message" in data or "Note" in data.get("Error Message", ""):
@@ -27,13 +26,13 @@ def fetch_stock_data_cached(ticker, use_alpha=True):
                 df = pd.DataFrame.from_dict(data["Time Series (Daily)"], orient="index").astype(float)
                 df.index = pd.to_datetime(df.index)
                 df = df.rename(columns={"4. close": "Close", "5. volume": "Volume", "2. high": "High", "3. low": "Low"})
-                return df[["Close", "Volume", "High", "Low"]].sort_index()[-30:]  # 1 месяц
+                return df[["Close", "Volume", "High", "Low"]].sort_index()
         except Exception as e:
             st.warning(f"Ошибка Alpha Vantage для {ticker}: {str(e)}")
     
     try:
         stock = yf.Ticker(ticker)
-        df = stock.history(period="1mo")
+        df = stock.history(period="1y", interval="1d")
         if not df.empty:
             df = df[["Close", "Volume", "High", "Low"]]
             return df
@@ -42,30 +41,20 @@ def fetch_stock_data_cached(ticker, use_alpha=True):
     return None
 
 @st.cache_data(ttl=300)
-def fetch_stock_quote_cached(ticker):
+def fetch_stock_data_7h(ticker):
     try:
         stock = yf.Ticker(ticker)
-        info = stock.info
-        bid = info.get("bid", None)
-        ask = info.get("ask", None)
-        if bid and ask:
-            return float(bid), float(ask)
-        return None, None
-    except:
-        try:
-            url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-            response = requests.get(url)
-            data = response.json()
-            if "Error Message" in data:
-                return None, None
-            if "Global Quote" in data:
-                quote = data["Global Quote"]
-                return float(quote.get("08. bid", 0)), float(quote.get("09. ask", 0))
-        except:
-            return None, None
+        df = stock.history(period="60d", interval="1h")
+        if not df.empty:
+            df = df[["Close", "Volume", "High", "Low"]]
+            df_7h = df.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
+            return df_7h
+    except Exception as e:
+        st.warning(f"Ошибка yfinance (7H) для {ticker}: {str(e)}")
+    return None
 
 @st.cache_data(ttl=300)
-def fetch_crypto_data(coin_id, days=30):
+def fetch_crypto_data(coin_id, days=60):
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
     response = requests.get(url)
     if response.status_code == 200:
@@ -74,16 +63,48 @@ def fetch_crypto_data(coin_id, days=30):
             'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
             'Close': [x[1] for x in data['prices']],
             'Volume': [x[1] for x in data['total_volumes']],
-            'High': [x[1] for x in data['prices']],  # Приблизительно (CoinGecko не дает High/Low)
+            'High': [x[1] for x in data['prices']],
             'Low': [x[1] for x in data['prices']]
         })
         df.set_index('Date', inplace=True)
-        return df
-    return None
+        df_7h = df.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'}).dropna()
+        return df, df_7h
+    return None, None
 
-def resample_to_7h(df):
-    df_7h = df.resample('7H').agg({'Close': 'last', 'Volume': 'sum', 'High': 'max', 'Low': 'min'})
-    return df_7h.dropna()
+@st.cache_data(ttl=300)
+def fetch_stock_quote_cached(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        bid = info.get("bid", None)
+        ask = info.get("ask", None)
+        pe_ratio = info.get("trailingPE", None)
+        eps = info.get("trailingEps", None)
+        if bid and ask:
+            return float(bid), float(ask), pe_ratio, eps
+        return None, None, None, None
+    except:
+        try:
+            url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
+            response = requests.get(url)
+            data = response.json()
+            if "Error Message" in data:
+                return None, None, None, None
+            if "Global Quote" in data:
+                quote = data["Global Quote"]
+                return float(quote.get("08. bid", 0)), float(quote.get("09. ask", 0)), None, None
+        except:
+            return None, None, None, None
+
+@st.cache_data(ttl=300)
+def fetch_crypto_fundamentals(coin_id):
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        market_cap = data.get("market_data", {}).get("market_cap", {}).get("usd", None)
+        return market_cap
+    return None
 
 def calculate_gann_angles(df):
     if len(df) < 2:
@@ -98,80 +119,117 @@ def calculate_gann_angles(df):
     else:
         return "Слабый тренд"
 
-def analyze_trend(df, bid=None, ask=None):
-    if df is None or len(df) < 30:
-        return "Неизвестно", 0, []
+def calculate_fibonacci_levels(df):
+    high = df['High'].max()
+    low = df['Low'].min()
+    diff = high - low
+    levels = {
+        "23.6%": high - 0.236 * diff,
+        "38.2%": high - 0.382 * diff,
+        "50%": high - 0.5 * diff,
+        "61.8%": high - 0.618 * diff
+    }
+    latest_price = df['Close'].iloc[-1]
+    if latest_price > levels["23.6%"]:
+        return "Восходящий (выше 23.6%)"
+    elif latest_price < levels["61.8%"]:
+        return "Нисходящий (ниже 61.8%)"
+    return None
+
+def analyze_trend(df, df_7h, bid=None, ask=None, pe_ratio=None, eps=None, market_cap=None):
+    if df is None or len(df) < 30 or df_7h is None:
+        return "Неизвестно", 0, [], None
     
-    df_7h = resample_to_7h(df)
+    # Индикаторы на 1D
     df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
     df['CCI'] = ta.trend.CCIIndicator(df['High'], df['Low'], df['Close'], window=20).cci()
     df['EMA50'] = ta.trend.EMAIndicator(df['Close'], window=50).ema_indicator()
-    df['EMA100'] = ta.trend.EMAIndicator(df['Close'], window=100).ema_indicator()
+    df['EMA200'] = ta.trend.EMAIndicator(df['Close'], window=200).ema_indicator()
     df['MACD'] = ta.trend.MACD(df['Close']).macd_diff()
     df['Volume_MA'] = df['Volume'].rolling(window=10).mean()
     df['Stochastic'] = ta.momentum.StochasticOscillator(df['High'], df['Low'], df['Close']).stoch()
     df['BB_Upper'], df['BB_Middle'], df['BB_Lower'] = ta.volatility.BollingerBands(df['Close']).bollinger_hband(), ta.volatility.BollingerBands(df['Close']).bollinger_mavg(), ta.volatility.BollingerBands(df['Close']).bollinger_lband()
     df['VWAP'] = ta.volume.VolumeWeightedAveragePrice(df['High'], df['Low'], df['Close'], df['Volume']).volume_weighted_average_price()
     df['ATR'] = ta.volatility.AverageTrueRange(df['High'], df['Low'], df['Close']).average_true_range()
-    gann_trend = calculate_gann_angles(df_7h)
+    df['ADX'] = ta.trend.ADXIndicator(df['High'], df['Low'], df['Close']).adx()
+    df['Momentum'] = ta.momentum.ROCIndicator(df['Close']).roc()
+    df['OBV'] = ta.volume.OnBalanceVolumeIndicator(df['Close'], df['Volume']).on_balance_volume()
+    df['Ichimoku_Conversion'] = ta.trend.IchimokuIndicator(df['High'], df['Low']).ichimoku_conversion_line()
+    df['Ichimoku_Base'] = ta.trend.IchimokuIndicator(df['High'], df['Low']).ichimoku_base_line()
     
-    latest_rsi = df['RSI'].iloc[-1]
-    latest_cci = df['CCI'].iloc[-1]
-    latest_ema50 = df['EMA50'].iloc[-1]
-    latest_ema100 = df['EMA100'].iloc[-1]
-    latest_macd = df['MACD'].iloc[-1]
+    # Индикаторы на 7H (для точек входа)
+    df_7h['RSI_7h'] = ta.momentum.RSIIndicator(df_7h['Close'], window=14).rsi()
+    df_7h['Stochastic_7h'] = ta.momentum.StochasticOscillator(df_7h['High'], df_7h['Low'], df_7h['Close']).stoch()
+    
+    latest_rsi = df['RSI'].iloc[-1] if not df['RSI'].isna().iloc[-1] else 50
+    latest_cci = df['CCI'].iloc[-1] if not df['CCI'].isna().iloc[-1] else 0
+    latest_ema50 = df['EMA50'].iloc[-1] if not df['EMA50'].isna().iloc[-1] else df['Close'].iloc[-1]
+    latest_ema200 = df['EMA200'].iloc[-1] if not df['EMA200'].isna().iloc[-1] else df['Close'].iloc[-1]
+    latest_macd = df['MACD'].iloc[-1] if not df['MACD'].isna().iloc[-1] else 0
     latest_volume = df['Volume'].iloc[-1]
-    volume_ma = df['Volume_MA'].iloc[-1]
-    latest_stoch = df['Stochastic'].iloc[-1]
+    volume_ma = df['Volume_MA'].iloc[-1] if not df['Volume_MA'].isna().iloc[-1] else latest_volume
+    latest_stoch = df['Stochastic'].iloc[-1] if not df['Stochastic'].isna().iloc[-1] else 50
     latest_price = df['Close'].iloc[-1]
-    latest_bb_upper = df['BB_Upper'].iloc[-1]
-    latest_bb_lower = df['BB_Lower'].iloc[-1]
-    latest_vwap = df['VWAP'].iloc[-1]
-    latest_atr = df['ATR'].iloc[-1]
+    latest_bb_upper = df['BB_Upper'].iloc[-1] if not df['BB_Upper'].isna().iloc[-1] else latest_price
+    latest_bb_lower = df['BB_Lower'].iloc[-1] if not df['BB_Lower'].isna().iloc[-1] else latest_price
+    latest_vwap = df['VWAP'].iloc[-1] if not df['VWAP'].isna().iloc[-1] else latest_price
+    latest_atr = df['ATR'].iloc[-1] if not df['ATR'].isna().iloc[-1] else 0
+    latest_adx = df['ADX'].iloc[-1] if not df['ADX'].isna().iloc[-1] else 25
+    latest_momentum = df['Momentum'].iloc[-1] if not df['Momentum'].isna().iloc[-1] else 0
+    latest_obv = df['OBV'].iloc[-1] if not df['OBV'].isna().iloc[-1] else 0
+    latest_ichimoku_conv = df['Ichimoku_Conversion'].iloc[-1] if not df['Ichimoku_Conversion'].isna().iloc[-1] else latest_price
+    latest_ichimoku_base = df['Ichimoku_Base'].iloc[-1] if not df['Ichimoku_Base'].isna().iloc[-1] else latest_price
+    latest_rsi_7h = df_7h['RSI_7h'].iloc[-1] if not df_7h['RSI_7h'].isna().iloc[-1] else 50
+    latest_stoch_7h = df_7h['Stochastic_7h'].iloc[-1] if not df_7h['Stochastic_7h'].isna().iloc[-1] else 50
+    
+    gann_trend = calculate_gann_angles(df_7h)
+    fib_trend = calculate_fibonacci_levels(df)
     
     score = 0
     confirmations = 0
     trend = "Распределение"
+    entry_signal = None
     debug_info = []
     
+    # Технические индикаторы (1D)
     if latest_rsi > 70 and latest_cci > 100:
         trend = "Восходящий тренд"
         confirmations += 1
-        score += 0.2
+        score += 0.15
         debug_info.append(f"RSI={latest_rsi:.2f}>70, CCI={latest_cci:.2f}>100: Восходящий")
     elif latest_rsi < 30 and latest_cci < -100:
         trend = "Нисходящий тренд"
         confirmations += 1
-        score += 0.2
+        score += 0.15
         debug_info.append(f"RSI={latest_rsi:.2f}<30, CCI={latest_cci:.2f}<-100: Нисходящий")
     
-    if latest_ema50 > latest_ema100:
+    if latest_ema50 > latest_ema200:
         if trend == "Восходящий тренд":
             confirmations += 1
         trend = "Восходящий тренд"
-        score += 0.2
-        debug_info.append(f"EMA50={latest_ema50:.2f}>EMA100={latest_ema100:.2f}: Восходящий")
-    elif latest_ema50 < latest_ema100:
+        score += 0.15
+        debug_info.append(f"EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Восходящий")
+    elif latest_ema50 < latest_ema200:
         if trend == "Нисходящий тренд":
             confirmations += 1
         trend = "Нисходящий тренд"
-        score += 0.2
-        debug_info.append(f"EMA50={latest_ema50:.2f}<EMA100={latest_ema100:.2f}: Нисходящий")
+        score += 0.15
+        debug_info.append(f"EMA50={latest_ema50:.2f}<EMA200={latest_ema200:.2f}: Нисходящий")
     
     if latest_macd > 0 and trend == "Восходящий тренд":
         confirmations += 1
-        score += 0.15
+        score += 0.1
         debug_info.append(f"MACD={latest_macd:.2f}>0: Восходящий")
     elif latest_macd < 0 and trend == "Нисходящий тренд":
         confirmations += 1
-        score += 0.15
+        score += 0.1
         debug_info.append(f"MACD={latest_macd:.2f}<0: Нисходящий")
     
     if latest_volume > volume_ma * 1.5:
         if trend == "Восходящий тренд":
             confirmations += 1
         trend = "Накопление"
-        score += 0.15
+        score += 0.1
         debug_info.append(f"Volume={latest_volume:.2f}>1.5*MA={volume_ma:.2f}: Накопление")
     
     if bid and ask and bid > 0 and ask > 0:
@@ -179,13 +237,8 @@ def analyze_trend(df, bid=None, ask=None):
         if spread < latest_price * 0.01:
             if trend == "Восходящий тренд":
                 confirmations += 1
-            score += 0.15
+            score += 0.1
             debug_info.append(f"Bid/Ask спред={spread:.2f}<1% цены: Восходящий")
-    
-    if gann_trend == "Сильный тренд" and trend in ["Восходящий тренд", "Нисходящий тренд"]:
-        confirmations += 1
-        score += 0.15
-        debug_info.append(f"Gann: {gann_trend}")
     
     if latest_stoch > 80:
         if trend == "Восходящий тренд":
@@ -224,27 +277,108 @@ def analyze_trend(df, bid=None, ask=None):
         score += 0.1
         debug_info.append(f"Price={latest_price:.2f}<VWAP={latest_vwap:.2f}: Нисходящий")
     
-    if confirmations < 3:
-        trend = "Неопределенно"
-        score = max(score - 0.2, 0)
-        debug_info.append(f"Подтверждений={confirmations}<3: Неопределенно")
+    if latest_adx > 25:
+        if trend in ["Восходящий тренд", "Нисходящий тренд"]:
+            confirmations += 1
+        score += 0.1
+        debug_info.append(f"ADX={latest_adx:.2f}>25: Сильный тренд")
     
-    return trend, score, debug_info
+    if latest_momentum > 0:
+        if trend == "Восходящий тренд":
+            confirmations += 1
+        score += 0.1
+        debug_info.append(f"Momentum={latest_momentum:.2f}>0: Восходящий")
+    elif latest_momentum < 0:
+        if trend == "Нисходящий тренд":
+            confirmations += 1
+        score += 0.1
+        debug_info.append(f"Momentum={latest_momentum:.2f}<0: Нисходящий")
+    
+    if latest_obv > df['OBV'].iloc[-2]:
+        if trend == "Восходящий тренд":
+            confirmations += 1
+        score += 0.1
+        debug_info.append(f"OBV={latest_obv:.2f} растет: Восходящий")
+    elif latest_obv < df['OBV'].iloc[-2]:
+        if trend == "Нисходящий тренд":
+            confirmations += 1
+        score += 0.1
+        debug_info.append(f"OBV={latest_obv:.2f} падает: Нисходящий")
+    
+    if latest_price > latest_ichimoku_conv and latest_price > latest_ichimoku_base:
+        if trend == "Восходящий тренд":
+            confirmations += 1
+        score += 0.1
+        debug_info.append(f"Price={latest_price:.2f}>Ichimoku Conv={latest_ichimoku_conv:.2f}, Base={latest_ichimoku_base:.2f}: Восходящий")
+    
+    if fib_trend:
+        if fib_trend.startswith("Восходящий") and trend == "Восходящий тренд":
+            confirmations += 1
+        elif fib_trend.startswith("Нисходящий") and trend == "Нисходящий тренд":
+            confirmations += 1
+        score += 0.05
+        debug_info.append(f"Fibonacci: {fib_trend}")
+    
+    # Фундаментальные метрики
+    if pe_ratio and pe_ratio < 15:
+        if trend == "Восходящий тренд":
+            confirmations += 1
+        score += 0.05
+        debug_info.append(f"P/E={pe_ratio:.2f}<15: Недооценка")
+    if eps and eps > 0:
+        if trend == "Восходящий тренд":
+            confirmations += 1
+        score += 0.05
+        debug_info.append(f"EPS={eps:.2f}>0: Положительная прибыль")
+    if market_cap and market_cap > 1_000_000_000:
+        if trend == "Восходящий тренд":
+            confirmations += 1
+        score += 0.05
+        debug_info.append(f"Market Cap={market_cap/1e9:.2f}B>1B: Крупная капитализация")
+    
+    # Точка входа на 7H
+    if latest_rsi_7h > 70 and latest_stoch_7h > 80:
+        entry_signal = "Покупка (RSI_7h>70, Stochastic_7h>80)"
+        debug_info.append(entry_signal)
+    elif latest_rsi_7h < 30 and latest_stoch_7h < 20:
+        entry_signal = "Продажа (RSI_7h<30, Stochastic_7h<20)"
+        debug_info.append(entry_signal)
+    
+    if gann_trend == "Сильный тренд" and trend in ["Восходящий тренд", "Нисходящий тренд"]:
+        confirmations += 1
+        score += 0.1
+        debug_info.append(f"Gann (7H): {gann_trend}")
+    
+    # Порог подтверждений
+    if confirmations < 3:
+        trend = "Неизвестно"
+        score = 0
+        debug_info.append(f"Подтверждений={confirmations}<3: Неизвестно")
+    elif confirmations >= 4:
+        score += 0.2  # Бонус для топ-активов
+    
+    return trend, score, debug_info, entry_signal
 
 def send_telegram_report(chat_id, message):
     if not TELEGRAM_BOT_TOKEN:
         return "Ошибка: Токен бота не загружен (проверьте secrets в Streamlit)."
     try:
-        bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        bot.get_me()  # Проверка токена
-        bot.send_message(chat_id=chat_id, text=message)
-        return "Сообщение отправлено успешно!"
+        response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")
+        if not response.json().get("ok"):
+            return f"Ошибка: Недействительный токен ({response.json().get('description')})"
+        response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", params={
+            "chat_id": chat_id,
+            "text": message
+        })
+        if response.json().get("ok"):
+            return "Сообщение отправлено успешно!"
+        return f"Ошибка отправки: {response.json().get('description')}"
     except Exception as e:
         return f"Ошибка отправки: {str(e)} (проверьте токен или Chat ID)"
 
 # Streamlit приложение
 st.title(">tS|TQTVLSYSTEM")
-st.subheader("Анализ трендов и лучших активов")
+st.subheader("Анализ трендов и лучших сделок")
 
 # Отладка
 with st.expander("Отладка: Статус API и токена"):
@@ -252,9 +386,11 @@ with st.expander("Отладка: Статус API и токена"):
     st.write(f"**Telegram токен**: {'Загружен' if TELEGRAM_BOT_TOKEN else 'Не загружен'}")
     if TELEGRAM_BOT_TOKEN:
         try:
-            bot = Bot(token=TELEGRAM_BOT_TOKEN)
-            bot_info = bot.get_me()
-            st.write(f"**Бот активен**: @{bot_info.username}")
+            response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")
+            if response.json().get("ok"):
+                st.write(f"**Бот активен**: @{response.json()['result']['username']}")
+            else:
+                st.error(f"**Ошибка проверки бота**: {response.json().get('description')}")
         except Exception as e:
             st.error(f"**Ошибка проверки бота**: {str(e)}")
     if st.button("Тест Alpha Vantage (1 запрос)"):
@@ -284,34 +420,45 @@ crypto_ids = [
 # Анализ
 if market == "Акции":
     assets = stock_tickers
-    data_fetcher = lambda x: fetch_stock_data_cached(x)
+    data_fetcher = fetch_stock_data_cached
+    data_fetcher_7h = fetch_stock_data_7h
     quote_fetcher = fetch_stock_quote_cached
+    fund_fetcher = lambda x: None
 else:
     assets = crypto_ids
-    data_fetcher = fetch_crypto_data
-    quote_fetcher = lambda x: (None, None)
+    data_fetcher = lambda x: fetch_crypto_data(x)[0]
+    data_fetcher_7h = lambda x: fetch_crypto_data(x)[1]
+    quote_fetcher = lambda x: (None, None, None, None)
+    fund_fetcher = fetch_crypto_fundamentals
 
 trend_scores = []
 successful_fetches = 0
 debug_trends = []
-for asset in assets[:50]:  # Ограничим 50 для скорости
+for asset in assets[:50]:
     df = data_fetcher(asset)
+    df_7h = data_fetcher_7h(asset)
     if df is not None:
         successful_fetches += 1
-    bid, ask = quote_fetcher(asset)
-    if df is not None:
-        trend, score, debug_info = analyze_trend(df, bid, ask)
-        trend_scores.append((asset, trend, score))
-        debug_trends.append((asset, debug_info))
-    time.sleep(0.2)  # Пауза для API
+    bid, ask, pe_ratio, eps = quote_fetcher(asset)
+    market_cap = fund_fetcher(asset)
+    if df is not None and df_7h is not None:
+        trend, score, debug_info, entry_signal = analyze_trend(df, df_7h, bid, ask, pe_ratio, eps, market_cap)
+        trend_scores.append((asset, trend, score, entry_signal))
+        debug_trends.append((asset, debug_info, entry_signal))
+    time.sleep(0.2)
 
 st.info(f"Успешно загружено данных: {successful_fetches}/{min(len(assets), 50)} активов")
 
-with st.expander("Отладка: Индикаторы по активам"):
-    for asset, debug_info in debug_trends:
-        st.write(f"**{asset}**:")
-        for info in debug_info:
-            st.write(f"- {info}")
+with st.expander("Детали тренда по активам"):
+    debug_df = []
+    for asset, debug_info, entry_signal in debug_trends:
+        debug_df.append({
+            "Актив": asset,
+            "Тренд": debug_info[-1] if debug_info else "Неизвестно",
+            "Индикаторы": "; ".join(debug_info[:-1]) if debug_info else "Нет данных",
+            "Точка входа (7H)": entry_signal if entry_signal else "Нет сигнала"
+        })
+    st.dataframe(pd.DataFrame(debug_df))
 
 if trend_scores:
     market_trend = max(set([x[1] for x in trend_scores]), key=[x[1] for x in trend_scores].count)
@@ -321,18 +468,21 @@ else:
 
 if st.button("Показать топ-активы (Премиум)"):
     if trend_scores:
-        top_assets = sorted(trend_scores, key=lambda x: x[2], reverse=True)[:10]  # Топ-10
-        st.write("**Топ-активы**:")
-        for asset, trend, score in top_assets:
-            st.write(f"- {asset}: {trend} (Скор: {score:.2f})")
+        top_assets = sorted([x for x in trend_scores if x[2] >= 0.4], key=lambda x: x[2], reverse=True)[:10]
+        if top_assets:
+            st.write("**Топ-активы для сделок**:")
+            for asset, trend, score, entry_signal in top_assets:
+                st.write(f"- {asset}: {trend} (Скор: {score:.2f}, Точка входа: {entry_signal if entry_signal else 'Нет сигнала'})")
+        else:
+            st.warning("Нет активов с достаточным количеством подтверждений (нужно 4+).")
     else:
         st.warning("Нет данных для топ-активов.")
 
 chat_id_input = st.text_input("Введите ваш Telegram Chat ID (для теста)", value="370110317")
 if st.button("Отправить отчет в Telegram (Премиум)"):
     if trend_scores:
-        top_assets = sorted(trend_scores, key=lambda x: x[2], reverse=True)[:3]
-        message = f"🚀 >tS|TQTVLSYSTEM Отчет\nРынок: {market}\nТренд: {market_trend}\nТоп-активы: {', '.join([x[0] for x in top_assets])}\nВремя: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        top_assets = sorted([x for x in trend_scores if x[2] >= 0.4], key=lambda x: x[2], reverse=True)[:3]
+        message = f"🚀 >tS|TQTVLSYSTEM Отчет\nРынок: {market}\nТренд: {market_trend}\nТоп-активы: {', '.join([f'{x[0]} ({x[3] if x[3] else 'Нет сигнала'})' for x in top_assets])}\nВремя: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         result = send_telegram_report(chat_id_input, message)
         st.write(result)
     else:
