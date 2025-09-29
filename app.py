@@ -9,7 +9,7 @@ import yfinance as yf
 import numpy as np
 import time
 
-# Списки активов (500 для акций, 50 для крипты)
+# Списки активов (500 акций, 50 криптовалют)
 stock_tickers = [
     "AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "BRK-B", "JPM", "V",
     "WMT", "UNH", "MA", "PG", "HD", "DIS", "BAC", "INTC", "CMCSA", "VZ",
@@ -19,44 +19,51 @@ stock_tickers = [
     "F", "GM", "TGT", "WBA", "MDT", "ABT", "JNJ", "CL", "KMB", "MO",
     "PM", "BTI", "HSY", "MCD", "YUM", "DPS", "COKE", "KDP", "MNST", "CCE",
     "CAG", "GIS", "K", "CPB", "HRL", "MKC"
-] + [f"STOCK{i:04d}" for i in range(450)]  # 500 всего
+] + [f"STOCK{i:04d}" for i in range(450)]
 crypto_ids = [
     "bitcoin", "ethereum", "solana", "cardano", "polkadot", "binancecoin", "ripple", "dogecoin", "avalanche-2", "chainlink",
     "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
-] + [f"CRYPTO{i:04d}" for i in range(30)]  # 50 всего
+] + [f"CRYPTO{i:04d}" for i in range(30)]
 
-# Современный дизайн в стиле Xynth
+# Современный дизайн, вдохновленный Xynth
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    :root {
+        --primary-bg: #0a0a0a;
+        --secondary-bg: #1a1a1a;
+        --text-color: #e0e0e0;
+        --accent-color: #4a90e2;
+        --shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    }
     .stApp {
-        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-        color: #ffffff;
+        background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+        color: var(--text-color);
         font-family: 'Roboto', sans-serif;
     }
     .stContainer {
-        max-width: 900px;
+        max-width: 950px;
         margin: 0 auto;
-        padding: 40px 20px;
+        padding: 40px 25px;
         text-align: center;
-        background: rgba(10, 10, 10, 0.95);
+        background: rgba(15, 15, 15, 0.95);
         border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+        box-shadow: var(--shadow);
     }
     .stMetric > label {
-        color: #e0e0e0;
+        color: var(--text-color);
         font-size: 1.1em;
         text-align: center;
     }
     .stSelectbox > label {
-        color: #e0e0e0;
+        color: var(--text-color);
         font-size: 1.1em;
         text-align: center;
     }
     .stButton > button {
         background: linear-gradient(90deg, #2e2e2e, #4a4a4a);
-        color: #ffffff;
+        color: var(--text-color);
         border: none;
         border-radius: 25px;
         padding: 15px 40px;
@@ -67,6 +74,7 @@ st.markdown("""
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        background: linear-gradient(90deg, #3a3a3a, #5a5a5a);
     }
     .css-1aumxhk {
         width: 80%;
@@ -74,7 +82,7 @@ st.markdown("""
     }
     h1, h2, h3 {
         text-align: center;
-        color: #f0f0f0;
+        color: var(--text-color);
         text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
     }
     table {
@@ -89,14 +97,14 @@ st.markdown("""
         padding: 12px 15px;
         text-align: center;
         border: 1px solid #444;
-        color: #e0e0e0;
+        color: var(--text-color);
     }
     th {
         background: #333;
-        font-weight: bold;
+        font-weight: 700;
     }
     .stProgress > div > div > div > div {
-        background-color: #4a4a4a;
+        background-color: var(--accent-color);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -110,11 +118,12 @@ ADMIN_KEY = st.secrets.get("ADMIN_KEY", "mysecretkey123")
 @st.cache_data(ttl=300)
 def fetch_stock_data_cached(ticker, interval="1d", period="1y"):
     try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(period=period, interval=interval)
-        if not df.empty:
-            df = df[["Close", "Volume", "High", "Low"]]
-            return df
+        with st.spinner(f"Загрузка данных для {ticker}..."):
+            stock = yf.Ticker(ticker)
+            df = stock.history(period=period, interval=interval)
+            if not df.empty:
+                df = df[["Close", "Volume", "High", "Low"]]
+                return df
     except Exception as e:
         logging.error(f"Ошибка yfinance для {ticker}: {e}")
     return None
@@ -122,19 +131,20 @@ def fetch_stock_data_cached(ticker, interval="1d", period="1y"):
 @st.cache_data(ttl=300)
 def fetch_crypto_data(coin_id, days=365):
     try:
-        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            df = pd.DataFrame({
-                'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
-                'Close': [x[1] for x in data['prices']],
-                'Volume': [x[1] for x in data['total_volumes']],
-                'High': [x[1] for x in data['prices']],
-                'Low': [x[1] for x in data['prices']]
-            })
-            df.set_index('Date', inplace=True)
-            return df
+        with st.spinner(f"Загрузка данных для {coin_id}..."):
+            url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                df = pd.DataFrame({
+                    'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
+                    'Close': [x[1] for x in data['prices']],
+                    'Volume': [x[1] for x in data['total_volumes']],
+                    'High': [x[1] for x in data['prices']],
+                    'Low': [x[1] for x in data['prices']]
+                })
+                df.set_index('Date', inplace=True)
+                return df
     except Exception as e:
         logging.error(f"Ошибка для {coin_id}: {e}")
     return None
