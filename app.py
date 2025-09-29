@@ -26,85 +26,60 @@ crypto_ids = [
     "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
 ] + [f"CRYPTO{i:04d}" for i in range(30)]
 
-# Красивый шаблон дизайна
+# Минималистичный дизайн с белым текстом по центру на черном фоне
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
     .stApp {
-        background: linear-gradient(135deg, #1e3c72, #2a5298);
-        color: #e0e0e0;
+        background: #000;
+        color: #fff;
         height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
         overflow: hidden;
+        text-align: center;
     }
     .stContainer {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        padding: 40px;
-        border-radius: 15px;
-        text-align: center;
-        max-width: 600px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        max-width: 800px;
     }
     .stSelectbox > div {
         justify-content: center;
     }
     .stButton > button {
-        background: #4a90e2;
+        background: #333;
         color: #fff;
         border: none;
-        border-radius: 25px;
-        padding: 12px 30px;
-        font-size: 1.1em;
-        font-weight: 500;
-        transition: transform 0.2s, background 0.2s;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 1em;
     }
     .stButton > button:hover {
-        transform: translateY(-2px);
-        background: #357abd;
+        background: #555;
     }
     .css-1aumxhk {
         width: 100%;
     }
     h1, h2, h3 {
         color: #fff;
-        font-family: 'Poppins', sans-serif;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
     table {
-        margin: 0 auto;
+        margin: 20px auto;
         border-collapse: collapse;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
+        background: #222;
+        border-radius: 5px;
     }
     th, td {
-        padding: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 8px;
+        border: 1px solid #444;
     }
     th {
-        background: rgba(255, 255, 255, 0.15);
-    }
-    .stSpinner > div {
-        background: #4a90e2;
-        border: 4px solid #e0e0e0;
-        border-top: 4px solid #4a90e2;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        background: #333;
     }
     .stSpinner {
         text-align: center;
         color: #fff;
-        font-size: 1.1em;
     }
     ::-webkit-scrollbar {
         display: none;
