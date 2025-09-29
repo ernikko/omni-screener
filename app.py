@@ -106,6 +106,15 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-color: var(--accent-color);
     }
+    .visualization {
+        display: none;
+        text-align: center;
+    }
+    .visualization img {
+        max-width: 100%;
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -161,10 +170,11 @@ def fetch_stock_fundamentals(ticker):
             "roe": info.get("returnOnEquity", None),
             "market_cap": info.get("marketCap", None),
             "beta": info.get("beta", None),
-            "sector": info.get("sector", "Другое")
+            "sector": info.get("sector", "Другое"),
+            "current_price": info.get("currentPrice", None)
         }
     except:
-        return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "sector": "Другое"}
+        return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "sector": "Другое", "current_price": None}
 
 def analyze_strategy_day_trade(df_list, market):
     filtered = []
@@ -184,11 +194,11 @@ def analyze_strategy_day_trade(df_list, market):
         beta = fundamentals.get("beta", 1.0)
         if beta <= 1.2:
             continue
-        filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0), fundamentals.get("sector", "Другое")))
-    
+        filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0), fundamentals.get("sector", "Другое"), fundamentals.get("current_price", 0)))
+
     # Динамическое определение секторов
     sector_counts = {"Технологии": 0, "Услуги связи": 0, "Финансы": 0, "Другое": 0}
-    for _, _, _, _, _, _, _, sector in filtered:
+    for _, _, _, _, _, _, _, sector, _ in filtered:
         if "Technology" in sector:
             sector_counts["Технологии"] += 1
         elif "Communication" in sector:
@@ -204,35 +214,44 @@ def analyze_strategy_day_trade(df_list, market):
     fig = go.Figure()
     atr_data = [x[3] for x in filtered]
     fig.add_trace(go.Histogram(x=atr_data, name="ATR%", nbinsx=20))
-    fig.update_layout(title="Распределение ATR%", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
+    fig.add_hline(y=2, line_dash="dash", line_color="green", annotation_text="2% Threshold")
+    fig.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="5% Threshold")
+    fig.update_layout(title="Распределение ATR% всех отфильтрованных акций", xaxis_title="ATR %", yaxis_title="Количество акций", template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
     
     st.subheader("📊 Анализ рынка")
     st.write("Финансовый анализ завершен")
-    st.write("Просмотр отчета")
-    st.write("Полный обзор процесса скрининга акций")
-    st.write("Я создал подробную визуализацию нашего пути фильтрации акций. Давайте посмотрим, что мы сделали:")
-    
-    st.write("### Этапы фильтрации:")
-    st.write(f"• Начальная вселенная: Начали с {len(df_list)} акций")
-    st.write(f"• Базовый фильтр: Применены критерии (цена >$10, объем >2M, бета >1.2) → {len(filtered)} акций")
-    st.write("• Сегментация волатильности:")
-    st.write(f"  - Высокая волатильность (ATR >5%): {sum(1 for x in filtered if x[3] > 5)} акций")
-    st.write(f"  - Умеренная волатильность (ATR 2-5%): {sum(1 for x in filtered if 2 <= x[3] <= 5)} акций ← Наш фокус")
-    st.write(f"• Финальный отбор: Топ-15 по рыночной капитализации")
-    
-    st.write("### Ключевые выводы:")
-    st.write("• **Распределение ATR%**: Гистограмма показывает, что большинство акций в нашем отфильтрованном наборе имеют ATR между 3-6%. Выбранный диапазон (2-5%) — это зона умеренной волатильности, избегающая как слишком стабильных, так и чрезмерно волатильных акций.")
-    st.write(f"• **Профиль финального отбора**:")
-    st.write(f"  - Доминирование секторов: {sector_counts['Технологии']} акций в Технологиях, {sector_counts['Услуги связи']} в Услугах связи, {sector_counts['Финансы']} в Финансах, {sector_counts['Другое']} в Других")
-    st.write(f"  - Диапазон капитализации: ${min(x[6]/1e9 for x in top_15):.1f}B ({top_15[-1][0]}) до ${max(x[6]/1e12 for x in top_15):.1f}T ({top_15[0][0]})")
-    st.write(f"  - Диапазон волатильности: {min(x[3] for x in top_15):.2f}% ({min(top_15, key=lambda x: x[3])[0]}) до {max(x[3] for x in top_15):.2f}% ({max(top_15, key=lambda x: x[3])[0]})")
-    
-    st.write("### 🏆 Топ-15 лучших акций:")
-    top_df = pd.DataFrame([
-        {"Акция": x[0], "Cap ($T)": x[6]/1e12, "ATR %": x[3], "Бета": x[5]} for x in top_15
-    ])
-    st.table(top_df)
+    if st.button("Просмотр отчета"):
+        with st.expander("Финансовая визуализация", expanded=True):
+            # График 1: Процесс фильтрации акций
+            fig_process = go.Figure(data=[go.Bar(x=['Начальный пул акций', 'Базовый фильтр', 'Высокая волатильность', 'Умеренная волатильность', 'Финальный выбор'],
+                                               y=[len(df_list), len(filtered), sum(1 for x in filtered if x[3] > 5), sum(1 for x in filtered if 2 <= x[3] <= 5), 15])])
+            fig_process.update_layout(title="Процесс фильтрации акций", template="plotly_dark")
+            st.plotly_chart(fig_process, use_container_width=True)
+            
+            # График 2: Распределение ATR% (уже выше)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # График 3: Топ-15 по рыночной капитализации
+            fig_top15 = go.Figure(data=[go.Bar(x=[x[0] for x in top_15], y=[x[6]/1e12 for x in top_15])])
+            fig_top15.update_layout(title="Финальный выбор: Топ-15 акций по рыночной капитализации (с умеренной волатильностью)", xaxis_title="Тикер", yaxis_title="Капитализация ($T)", template="plotly_dark")
+            st.plotly_chart(fig_top15, use_container_width=True)
+            
+            st.subheader("Финансовые показатели")
+            st.write("### Краткое описание процесса фильтрации акций:")
+            st.write("#### Оставшиеся запасы стадии фильтра:")
+            st.write(f"Начальный пул акций: {len(df_list)}")
+            st.write(f"Базовый фильтр (Цена > 10 долларов, Объем > 2 млн, Бета > 1,2): {len(filtered)}")
+            st.write(f"Высокая волатильность (ATR > 5%): {sum(1 for x in filtered if x[3] > 5)}")
+            st.write(f"Умеренная волатильность (ATR 2-5%): {sum(1 for x in filtered if 2 <= x[3] <= 5)}")
+            st.write(f"Финальный выбор (15 лучших по рыночной капитализации): 15")
+            
+            st.write("### Финальный отбор — 15 лучших акций по рыночной капитализации с умеренной волатильностью (ATR 2–5%):")
+            top_df = pd.DataFrame([
+                {"Тикер": x[0], "Цена закрытия": f"${x[8]:.2f}", "MarketCap": f"${x[6]/1e9:.2f} млрд", "ATR %": f"{x[3]:.2f}%", "Бета": x[5], "Сектор": x[7]}
+                for x in top_15
+            ])
+            st.table(top_df)
     
     return "Анализ завершен"
 
@@ -251,7 +270,7 @@ def analyze_strategy_undervalued(df_list, market):
     top_10 = sorted(filtered, key=lambda x: fetch_stock_fundamentals(x[0]).get("roe", 0), reverse=True)[:10]
     
     st.subheader("📊 Анализ рынка")
-    st.metric("Начальная вселенная", len(df_list))
+    st.metric("Начальный пул акций", len(df_list))
     st.metric("После фильтра P/E<15, EPS>0, Debt<0.5", len(filtered))
     
     st.subheader("🏆 Топ-10 недооцененных акций")
@@ -276,7 +295,7 @@ def analyze_strategy_income(df_list, market):
     top_10 = sorted(filtered, key=lambda x: x[2], reverse=True)[:10]
     
     st.subheader("📊 Анализ рынка")
-    st.metric("Начальная вселенная", len(df_list))
+    st.metric("Начальный пул акций", len(df_list))
     st.metric("После фильтра Dividend>2%, EPS>0", len(filtered))
     
     st.subheader("🏆 Топ-10 акций с доходами")
@@ -300,7 +319,7 @@ def analyze_strategy_options(df_list, market):
     top_10 = sorted(filtered, key=lambda x: x[3], reverse=True)[:10]
     
     st.subheader("📊 Анализ рынка")
-    st.metric("Начальная вселенная", len(df_list))
+    st.metric("Начальный пул акций", len(df_list))
     st.metric("После фильтра ATR>3%, Momentum>5%", len(filtered))
     
     st.subheader("🏆 Топ-10 для опционов")
