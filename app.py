@@ -35,9 +35,11 @@ st.markdown("""
         max-width: 800px;
         margin: 0 auto;
         padding: 20px;
+        text-align: center;
     }
     .stMetric > label {
         color: #ffffff;
+        text-align: center;
     }
     .stSelectbox > label {
         color: #ffffff;
@@ -46,14 +48,20 @@ st.markdown("""
     .stButton > button {
         background-color: #1f1f1f;
         color: #ffffff;
-        border-color: #ffffff;
-        width: 200px;
-        margin: 0 auto;
+        border: 1px solid #ffffff;
+        border-radius: 5px;
+        padding: 10px 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        width: 250px;
+        margin: 10px auto;
         display: block;
     }
     .css-1aumxhk {
         width: 80%;
         margin: 0 auto;
+    }
+    h1, h2, h3 {
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -246,7 +254,7 @@ is_admin = admin_key == ADMIN_KEY
 
 if is_admin:
     with st.expander("🔍 Отладка"):
-        st.write("Отладка готова")
+        st.write("Отладка готова. Тестовый режим: проверка данных.")
 
 # Выбор стратегии и рынка
 strategy = st.selectbox("🎯 Выберите стратегию", [
@@ -254,27 +262,31 @@ strategy = st.selectbox("🎯 Выберите стратегию", [
 ], key="strategy_select")
 market = st.selectbox("💹 Рынок", ["Акции", "Криптовалюты"], key="market_select")
 
+df_list = None
 if st.button(f"🚀 Запустить {strategy}", key="run_button"):
-    if market == "Акции":
-        df_list = [(ticker, fetch_stock_data_cached(ticker)) for ticker in stock_tickers[:50] if fetch_stock_data_cached(ticker) is not None]
-    else:
-        df_list = [(coin, fetch_crypto_data(coin)) for coin in crypto_ids[:50] if fetch_crypto_data(coin) is not None]
-    
-    if df_list:
-        if strategy == "Дневная Торговля":
-            result = analyze_strategy_day_trade(df_list, market)
-        elif strategy == "Поиск недооценённых акций":
-            result = analyze_strategy_undervalued(df_list, market)
-        elif strategy == "Игра с доходами":
-            result = analyze_strategy_income(df_list, market)
-        elif strategy == "Торговля опционами":
-            result = analyze_strategy_options(df_list, market)
-        st.success(result)
-    else:
-        st.error("🚨 Нет данных для анализа. Проверьте подключение или тикеры.")
+    try:
+        if market == "Акции":
+            df_list = [(ticker, fetch_stock_data_cached(ticker)) for ticker in stock_tickers[:50] if fetch_stock_data_cached(ticker) is not None]
+        else:
+            df_list = [(coin, fetch_crypto_data(coin)) for coin in crypto_ids[:50] if fetch_crypto_data(coin) is not None]
+        
+        if not df_list:
+            st.error("🚨 Нет данных для анализа. Проверьте подключение или тикеры.")
+        else:
+            if strategy == "Дневная Торговля":
+                result = analyze_strategy_day_trade(df_list, market)
+            elif strategy == "Поиск недооценённых акций":
+                result = analyze_strategy_undervalued(df_list, market)
+            elif strategy == "Игра с доходами":
+                result = analyze_strategy_income(df_list, market)
+            elif strategy == "Торговля опционами":
+                result = analyze_strategy_options(df_list, market)
+            st.success(result)
+    except Exception as e:
+        st.error(f"🚨 Ошибка анализа: {str(e)}")
 
 # Продолжение диалога
-if 'strategy' in locals() and df_list:
+if df_list and 'strategy' in locals():
     next_action = st.selectbox("Что дальше?", [
         "Анализ портфеля", "Технический анализ", "Сравнение волатильности", 
         "Фундаментальный анализ", "Разбивка по секторам"
@@ -295,8 +307,11 @@ if 'strategy' in locals() and df_list:
 # Telegram
 chat_id_input = st.text_input("📬 Chat ID для отчета", key="chat_id")
 if st.button("📤 Отправить отчет", key="send_report"):
-    message = f"🚀 Отчет по {strategy}\n📊 Топ-активы: {', '.join([x[0] for x in df_list[:5]])}"
-    result = send_telegram_report(chat_id_input, message)
-    st.write(result)
+    if df_list:
+        message = f"🚀 Отчет по {strategy}\n📊 Топ-активы: {', '.join([x[0] for x in df_list[:5]])}"
+        result = send_telegram_report(chat_id_input, message)
+        st.write(result)
+    else:
+        st.warning("Сначала выполните анализ.")
 
 st.write("🔓 Премиум: Полные отчеты, персонализация, графики.")
