@@ -8,13 +8,8 @@ from datetime import datetime, timedelta
 import yfinance as yf
 import numpy as np
 import time
-from concurrent.futures import ThreadPoolExecutor
-import logging
 
-# Настройка логирования
-logging.basicConfig(level=logging.ERROR)
-
-# Расширенные списки активов (500 акций)
+# Списки активов (500 для акций, 50 для крипты)
 stock_tickers = [
     "AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "BRK-B", "JPM", "V",
     "WMT", "UNH", "MA", "PG", "HD", "DIS", "BAC", "INTC", "CMCSA", "VZ",
@@ -24,11 +19,11 @@ stock_tickers = [
     "F", "GM", "TGT", "WBA", "MDT", "ABT", "JNJ", "CL", "KMB", "MO",
     "PM", "BTI", "HSY", "MCD", "YUM", "DPS", "COKE", "KDP", "MNST", "CCE",
     "CAG", "GIS", "K", "CPB", "HRL", "MKC"
-] + [f"STOCK{i:04d}" for i in range(450)]
+] + [f"STOCK{i:04d}" for i in range(450)]  # 500 всего
 crypto_ids = [
     "bitcoin", "ethereum", "solana", "cardano", "polkadot", "binancecoin", "ripple", "dogecoin", "avalanche-2", "chainlink",
     "litecoin", "bitcoin-cash", "stellar", "cosmos", "algorand", "tezos", "eos", "neo", "iota", "tron"
-] + [f"CRYPTO{i:04d}" for i in range(30)]
+] + [f"CRYPTO{i:04d}" for i in range(30)]  # 50 всего
 
 # Современный дизайн в стиле Xynth
 st.set_page_config(page_title=">tS|TQTVLSYSTEM", layout="wide", initial_sidebar_state="collapsed")
@@ -36,27 +31,27 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
     .stApp {
-        background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
         color: #ffffff;
         font-family: 'Roboto', sans-serif;
     }
     .stContainer {
         max-width: 900px;
         margin: 0 auto;
-        padding: 30px;
+        padding: 40px 20px;
         text-align: center;
+        background: rgba(10, 10, 10, 0.95);
         border-radius: 15px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-        background: rgba(15, 15, 15, 0.9);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
     }
     .stMetric > label {
         color: #e0e0e0;
-        font-size: 1.2em;
+        font-size: 1.1em;
         text-align: center;
     }
     .stSelectbox > label {
         color: #e0e0e0;
-        font-size: 1.2em;
+        font-size: 1.1em;
         text-align: center;
     }
     .stButton > button {
@@ -64,14 +59,14 @@ st.markdown("""
         color: #ffffff;
         border: none;
         border-radius: 25px;
-        padding: 12px 35px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        padding: 15px 40px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
         font-size: 1.2em;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     .stButton > button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
     }
     .css-1aumxhk {
         width: 80%;
@@ -83,59 +78,63 @@ st.markdown("""
         text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
     }
     table {
-        margin: 0 auto;
+        margin: 20px auto;
         border-collapse: collapse;
         background: #222;
         border-radius: 10px;
         overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     }
     th, td {
-        padding: 12px;
+        padding: 12px 15px;
         text-align: center;
         border: 1px solid #444;
         color: #e0e0e0;
     }
     th {
         background: #333;
+        font-weight: bold;
+    }
+    .stProgress > div > div > div > div {
+        background-color: #4a4a4a;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Кэширование данных с параллельной загрузкой
+# API ключ и Telegram токен
+ALPHA_VANTAGE_API_KEY = st.secrets.get("ALPHA_VANTAGE_API_KEY", "NFNQC9SQK6XF7CY3")
+TELEGRAM_BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN", None)
+ADMIN_KEY = st.secrets.get("ADMIN_KEY", "mysecretkey123")
+
+# Кэширование данных
 @st.cache_data(ttl=300)
 def fetch_stock_data_cached(ticker, interval="1d", period="1y"):
     try:
-        with st.spinner(f"Загрузка данных для {ticker}..."):
-            stock = yf.Ticker(ticker)
-            df = stock.history(period=period, interval=interval)
-            if not df.empty:
-                df = df[["Close", "Volume", "High", "Low"]]
-                return df
+        stock = yf.Ticker(ticker)
+        df = stock.history(period=period, interval=interval)
+        if not df.empty:
+            df = df[["Close", "Volume", "High", "Low"]]
+            return df
     except Exception as e:
-        logging.error(f"Ошибка для {ticker}: {e}")
+        logging.error(f"Ошибка yfinance для {ticker}: {e}")
     return None
-
-def fetch_all_data(tickers):
-    with ThreadPoolExecutor() as executor:
-        return list(executor.map(lambda t: (t, fetch_stock_data_cached(t)), tickers))
 
 @st.cache_data(ttl=300)
 def fetch_crypto_data(coin_id, days=365):
     try:
-        with st.spinner(f"Загрузка данных для {coin_id}..."):
-            url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
-            response = requests.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                df = pd.DataFrame({
-                    'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
-                    'Close': [x[1] for x in data['prices']],
-                    'Volume': [x[1] for x in data['total_volumes']],
-                    'High': [x[1] for x in data['prices']],
-                    'Low': [x[1] for x in data['prices']]
-                })
-                df.set_index('Date', inplace=True)
-                return df
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            df = pd.DataFrame({
+                'Date': pd.to_datetime([x[0]/1000 for x in data['prices']], unit='s'),
+                'Close': [x[1] for x in data['prices']],
+                'Volume': [x[1] for x in data['total_volumes']],
+                'High': [x[1] for x in data['prices']],
+                'Low': [x[1] for x in data['prices']]
+            })
+            df.set_index('Date', inplace=True)
+            return df
     except Exception as e:
         logging.error(f"Ошибка для {coin_id}: {e}")
     return None
@@ -152,10 +151,10 @@ def fetch_stock_fundamentals(ticker):
             "roe": info.get("returnOnEquity", None),
             "market_cap": info.get("marketCap", None),
             "beta": info.get("beta", None),
-            "atr": stock.history(period="1mo")['High'].subtract(stock.history(period="1mo")['Low']).rolling(14).mean().iloc[-1]
+            "sector": info.get("sector", "Другое")
         }
     except:
-        return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "atr": None}
+        return {"pe_ratio": None, "eps": None, "debt_equity": None, "roe": None, "market_cap": None, "beta": None, "sector": "Другое"}
 
 def analyze_strategy_day_trade(df_list, market):
     filtered = []
@@ -175,21 +174,22 @@ def analyze_strategy_day_trade(df_list, market):
         beta = fundamentals.get("beta", 1.0)
         if beta <= 1.2:
             continue
-        filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0)))
-    
-    filtered.sort(key=lambda x: x[6], reverse=True)
-    top_15 = filtered[:15]
+        filtered.append((ticker, df, latest_price, atr_pct, avg_volume, beta, fundamentals.get("market_cap", 0), fundamentals.get("sector", "Другое")))
     
     # Динамическое определение секторов
-    sector_counts = {"Технологии": 0, "Услуги связи": 0, "Финансы": 0}
-    for ticker, _, _, _, _, _, _ in top_15:
-        sector = fetch_stock_fundamentals(ticker).get("sector", "Другое")
+    sector_counts = {"Технологии": 0, "Услуги связи": 0, "Финансы": 0, "Другое": 0}
+    for _, _, _, _, _, _, _, sector in filtered:
         if "Technology" in sector:
             sector_counts["Технологии"] += 1
         elif "Communication" in sector:
             sector_counts["Услуги связи"] += 1
         elif "Financial" in sector:
-            sector_counts["Финансы"] += 1]
+            sector_counts["Финансы"] += 1
+        else:
+            sector_counts["Другое"] += 1
+    
+    filtered.sort(key=lambda x: x[6], reverse=True)
+    top_15 = filtered[:15]
     
     fig = go.Figure()
     atr_data = [x[3] for x in filtered]
@@ -214,7 +214,7 @@ def analyze_strategy_day_trade(df_list, market):
     st.write("### Ключевые выводы:")
     st.write("• **Распределение ATR%**: Гистограмма показывает, что большинство акций в нашем отфильтрованном наборе имеют ATR между 3-6%. Выбранный диапазон (2-5%) — это зона умеренной волатильности, избегающая как слишком стабильных, так и чрезмерно волатильных акций.")
     st.write(f"• **Профиль финального отбора**:")
-    st.write(f"  - Доминирование секторов: {sector_counts['Технологии']} акций в Технологиях, {sector_counts['Услуги связи']} в Услугах связи, {sector_counts['Финансы']} в Финансах")
+    st.write(f"  - Доминирование секторов: {sector_counts['Технологии']} акций в Технологиях, {sector_counts['Услуги связи']} в Услугах связи, {sector_counts['Финансы']} в Финансах, {sector_counts['Другое']} в Других")
     st.write(f"  - Диапазон капитализации: ${min(x[6]/1e9 for x in top_15):.1f}B ({top_15[-1][0]}) до ${max(x[6]/1e12 for x in top_15):.1f}T ({top_15[0][0]})")
     st.write(f"  - Диапазон волатильности: {min(x[3] for x in top_15):.2f}% ({min(top_15, key=lambda x: x[3])[0]}) до {max(x[3] for x in top_15):.2f}% ({max(top_15, key=lambda x: x[3])[0]})")
     
@@ -324,11 +324,22 @@ df_list = None
 if st.button(f"🚀 Запустить {strategy}", key="run_button"):
     try:
         with st.spinner("Выполняется анализ... Пожалуйста, подождите."):
+            progress_bar = st.progress(0)
             if market == "Акции":
-                df_list = fetch_all_data(stock_tickers[:500])
-                df_list = [(t, d) for t, d in df_list if d is not None]
+                df_list = []
+                for i, ticker in enumerate(stock_tickers[:500]):
+                    df = fetch_stock_data_cached(ticker)
+                    if df is not None:
+                        df_list.append((ticker, df))
+                    progress_bar.progress((i + 1) / 500)
             else:
-                df_list = [(coin, fetch_crypto_data(coin)) for coin in crypto_ids[:50] if fetch_crypto_data(coin) is not None]
+                df_list = []
+                for i, coin in enumerate(crypto_ids[:50]):
+                    df = fetch_crypto_data(coin)
+                    if df is not None:
+                        df_list.append((coin, df))
+                    progress_bar.progress((i + 1) / 50)
+            progress_bar.empty()
         
         if not df_list:
             st.error("🚨 Нет данных для анализа. Проверьте подключение или тикеры.")
