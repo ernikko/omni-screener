@@ -5,49 +5,47 @@ const tableBody = document.querySelector("#productsTable tbody");
 
 let products = {};
 
-// Функция рендера таблицы
+// Рендер таблицы
 function renderTable() {
   tableBody.innerHTML = "";
-  for (const [id, product] of Object.entries(products)) {
+  for (const [id, p] of Object.entries(products)) {
+    const priceClass = p.current_price >= p.start_price ? "price-up" : "price-down";
     const tr = document.createElement("tr");
-    const priceClass = product.last_change >= 0 ? "price-up" : "price-down";
     tr.innerHTML = `
-      <td>${id}</td>
-      <td>${product.name}</td>
-      <td class="${priceClass}">${product.current_price.toFixed(2)}</td>
+      <td>${p.name}</td>
+      <td>${p.start_price.toFixed(2)}</td>
+      <td class="${priceClass}">${p.current_price.toFixed(2)}</td>
+      <td>${p.current_price - p.start_price >=0 ? '+' : ''}${(p.current_price - p.start_price).toFixed(2)}</td>
       <td>
-        <button onclick="addView(${id})">Добавить просмотр</button>
+        <button onclick="addView('${id}')">+Просмотр</button>
       </td>
     `;
     tableBody.appendChild(tr);
   }
 }
 
-// Создание нового товара
+// Создать новый товар
 createBtn.addEventListener("click", async () => {
-  const name = prompt("Введите название товара:");
-  if (!name) return;
-
-  const startPrice = parseFloat(prompt("Введите стартовую цену:", "100"));
-  const minPrice = parseFloat(prompt("Введите минимальную цену:", "50"));
-  if (isNaN(startPrice) || isNaN(minPrice)) return alert("Неверная цена!");
+  const name = prompt("Название товара:");
+  const price = parseFloat(prompt("Стартовая/минимальная цена:"));
+  if (!name || isNaN(price)) return alert("Неверные данные!");
 
   try {
     const res = await fetch(`${backendUrl}/add_product`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, start_price: startPrice, min_price: minPrice })
+      body: JSON.stringify({ name, start_price: price, min_price: price })
     });
     const data = await res.json();
-    products = data.products;
+    products = data.products || {};
     renderTable();
-  } catch(err) {
-    console.error("Ошибка создания товара:", err);
+  } catch (err) {
+    console.error(err);
     alert("Не удалось создать товар. Проверь бекэнд.");
   }
 });
 
-// Добавление просмотра
+// Добавление «просмотра» для изменения цены
 async function addView(id) {
   try {
     const res = await fetch(`${backendUrl}/update_price`, {
@@ -59,8 +57,8 @@ async function addView(id) {
     products[id] = data.product;
     renderTable();
   } catch(err) {
-    console.error("Ошибка обновления цены:", err);
-    alert("Не удалось обновить цену. Проверь бекэнд.");
+    console.error(err);
+    alert("Не удалось обновить цену.");
   }
 }
 
@@ -72,8 +70,8 @@ async function loadProducts() {
     products = data.products || {};
     renderTable();
   } catch(err) {
-    console.error("Ошибка загрузки товаров:", err);
-    alert("Не удалось загрузить товары. Проверь бекэнд.");
+    console.error(err);
+    alert("Не удалось загрузить товары.");
   }
 }
 
