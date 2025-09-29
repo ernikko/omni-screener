@@ -112,8 +112,6 @@ def calculate_schiff_pitchfork(df):
     pivot_high = df['High'].loc[high_idx]
     pivot_low = df['Low'].loc[low_idx]
     median_price = (pivot_high + pivot_low) / 2
-    upper_level = pivot_high
-    lower_level = pivot_low
     latest_price = df['Close'].iloc[-1]
     if latest_price > median_price:
         return "Покупка (выше медианы)", median_price, latest_price
@@ -158,30 +156,30 @@ def analyze_short_term(df, df_7h, fundamentals):
     entry_signal = None
     debug_info = []
     
-    # Краткосрочные сигналы (переоцененность → шорт, перепроданность → лонг)
+    # Краткосрочные сигналы (перепроданность → лонг, переоцененность → шорт)
     if latest_rsi < 30 and latest_cci < -100:
         trend = "Восходящий тренд"
         confirmations += 1
         score += 0.2
-        debug_info.append(f"RSI={latest_rsi:.2f}<30, CCI={latest_cci:.2f}<-100: Перепроданность (лонг)")
+        debug_info.append(f"• RSI={latest_rsi:.2f}<30, CCI={latest_cci:.2f}<-100: Перепроданность")
     elif latest_rsi > 70 and latest_cci > 100:
         trend = "Нисходящий тренд"
         confirmations += 1
         score += 0.2
-        debug_info.append(f"RSI={latest_rsi:.2f}>70, CCI={latest_cci:.2f}>100: Переоцененность (шорт)")
+        debug_info.append(f"• RSI={latest_rsi:.2f}>70, CCI={latest_cci:.2f}>100: Переоцененность")
     
     if latest_price > latest_ema50 > latest_ema200:
         if trend == "Восходящий тренд":
             confirmations += 1
         trend = "Восходящий тренд"
         score += 0.2
-        debug_info.append(f"Price={latest_price:.2f}>EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Поддержка")
+        debug_info.append(f"• Price={latest_price:.2f}>EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Поддержка")
     elif latest_price < latest_ema50 < latest_ema200:
         if trend == "Нисходящий тренд":
             confirmations += 1
         trend = "Нисходящий тренд"
         score += 0.2
-        debug_info.append(f"Price={latest_price:.2f}<EMA50={latest_ema50:.2f}<EMA200={latest_ema200:.2f}: Сопротивление")
+        debug_info.append(f"• Price={latest_price:.2f}<EMA50={latest_ema50:.2f}<EMA200={latest_ema200:.2f}: Сопротивление")
     
     if bid and ask and bid > 0 and ask > 0:
         spread = ask - bid
@@ -189,56 +187,61 @@ def analyze_short_term(df, df_7h, fundamentals):
             if trend == "Восходящий тренд":
                 confirmations += 1
             score += 0.15
-            debug_info.append(f"Bid={bid:.2f}>Ask={ask:.2f}, спред={spread:.2f}: Спрос")
+            debug_info.append(f"• Bid={bid:.2f}>Ask={ask:.2f}, спред={spread:.2f}: Спрос")
         elif spread < latest_price * 0.01 and ask > bid:
-            if trend == "Нисходящий тренд":
+            if trend == "Нисходящий тренd":
                 confirmations += 1
             score += 0.15
-            debug_info.append(f"Ask={ask:.2f}>Bid={bid:.2f}, спред={spread:.2f}: Предложение")
+            debug_info.append(f"• Ask={ask:.2f}>Bid={bid:.2f}, спред={spread:.2f}: Предложение")
     
-    if gann_trend == "Сильный тренд":
-        if trend in ["Восходящий тренд", "Нисходящий тренд"]:
+    if gann_trend == "Сильный тренd":
+        if trend == "Восходящий тренd":
             confirmations += 1
         score += 0.15
-        debug_info.append(f"Gann (7H): {gann_trend}")
+        debug_info.append(f"• Gann (7H): {gann_trend}")
+    elif gann_trend == "Слабый тренd" and trend == "Нисходящий тренd":
+        confirmations += 1
+        score += 0.15
+        debug_info.append(f"• Gann (7H): {gann_trend}")
     
     if schiff_signal:
-        if schiff_signal.startswith("Покупка") and trend == "Восходящий тренд":
+        if schiff_signal.startswith("Покупка") and trend == "Восходящий тренd":
             confirmations += 1
             score += 0.15
-            debug_info.append(f"Schiff: {schiff_signal}")
-        elif schiff_signal.startswith("Продажа") and trend == "Нисходящий тренд":
+            debug_info.append(f"• Schiff: {schiff_signal}")
+        elif schiff_signal.startswith("Продажа") and trend == "Нисходящий тренd":
             confirmations += 1
             score += 0.15
-            debug_info.append(f"Schiff: {schiff_signal}")
+            debug_info.append(f"• Schiff: {schiff_signal}")
     
     if latest_volume > volume_ma * 1.5 and latest_momentum > 5:
-        if trend == "Восходящий тренд":
+        if trend == "Восходящий тренd":
             confirmations += 1
         score += 0.1
-        debug_info.append(f"Volume={latest_volume:.2f}>1.5*MA={volume_ma:.2f}, Momentum={latest_momentum:.2f}>5: Импульс роста")
+        debug_info.append(f"• Volume={latest_volume:.2f}>1.5*MA={volume_ma:.2f}, Momentum={latest_momentum:.2f}>5: Импульс роста")
     elif latest_volume > volume_ma * 1.5 and latest_momentum < -5:
-        if trend == "Нисходящий тренд":
+        if trend == "Нисходящий тренd":
             confirmations += 1
         score += 0.1
-        debug_info.append(f"Volume={latest_volume:.2f}>1.5*MA={volume_ma:.2f}, Momentum={latest_momentum:.2f}<-5: Импульс падения")
+        debug_info.append(f"• Volume={latest_volume:.2f}>1.5*MA={volume_ma:.2f}, Momentum={latest_momentum:.2f}<-5: Импульс падения")
     
-    if latest_rsi_7h < 30:
+    if latest_rsi_7h < 30 and trend == "Восходящий тренd":
         entry_signal = f"Лонг (RSI_7h={latest_rsi_7h:.2f}<30)"
         debug_info.append(entry_signal)
-    elif latest_rsi_7h > 70:
+    elif latest_rsi_7h > 70 and trend == "Нисходящий тренd":
         entry_signal = f"Шорт (RSI_7h={latest_rsi_7h:.2f}>70)"
         debug_info.append(entry_signal)
     
-    if pe_ratio and pe_ratio < 15 and trend == "Восходящий тренд":
+    if pe_ratio and pe_ratio < 15 and trend == "Восходящий тренd":
         score += 0.2
-        debug_info.append(f"P/E={pe_ratio:.2f}<15: Недооценка")
-    elif pe_ratio and pe_ratio > 30 and trend == "Нисходящий тренд":
+        debug_info.append(f"• P/E={pe_ratio:.2f}<15: Недооценка")
+    elif pe_ratio and pe_ratio > 30 and trend == "Нисходящий тренd":
         score += 0.2
-        debug_info.append(f"P/E={pe_ratio:.2f}>30: Переоценка")
+        debug_info.append(f"• P/E={pe_ratio:.2f}>30: Переоценка")
     
-    target = latest_price + latest_atr * 2 if latest_atr else latest_price * 1.05
-    stop_loss = latest_price - latest_atr * 1.5 if latest_atr else latest_price * 0.95
+    target = latest_price + (2 * latest_atr if latest_atr else latest_price * 0.05) if trend == "Восходящий тренd" else latest_price - (2 * latest_atr if latest_atr else latest_price * 0.05)
+    stop_loss = latest_price - (1.5 * latest_atr if latest_atr else latest_price * 0.05) if trend == "Восходящий тренd" else latest_price + (1.5 * latest_atr if latest_atr else latest_price * 0.05)
+    potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
     
     if confirmations < 3:
         trend = "Неизвестно"
@@ -280,48 +283,49 @@ def analyze_long_term(df, df_1w, fundamentals):
     
     # Долгосрочные сигналы
     if latest_ema50 > latest_ema200:
-        trend = "Восходящий тренд"
+        trend = "Восходящий тренd"
         confirmations += 1
         score += 0.2
-        debug_info.append(f"EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Долгосрочный рост")
+        debug_info.append(f"• EMA50={latest_ema50:.2f}>EMA200={latest_ema200:.2f}: Долгосрочный рост")
     
     if 40 < latest_rsi < 60:
         confirmations += 1
         score += 0.2
-        debug_info.append(f"RSI={latest_rsi:.2f} в 40-60: Потенциал роста")
+        debug_info.append(f"• RSI={latest_rsi:.2f} в 40-60: Потенциал роста")
     
     if latest_adx > 20:
         confirmations += 1
         score += 0.2
-        debug_info.append(f"ADX={latest_adx:.2f}>20: Устойчивый тренд")
+        debug_info.append(f"• ADX={latest_adx:.2f}>20: Устойчивый тренd")
     
     if pe_ratio and pe_ratio < 15:
         confirmations += 1
         score += 0.2
-        debug_info.append(f"P/E={pe_ratio:.2f}<15: Недооценка")
+        debug_info.append(f"• P/E={pe_ratio:.2f}<15: Недооценка")
     
     if eps and eps > 0:
         confirmations += 1
         score += 0.15
-        debug_info.append(f"EPS={eps:.2f}>0: Положительная прибыль")
+        debug_info.append(f"• EPS={eps:.2f}>0: Положительная прибыль")
     
     if debt_equity and debt_equity < 0.5:
         confirmations += 1
         score += 0.15
-        debug_info.append(f"Debt/Equity={debt_equity:.2f}<0.5: Низкая долговая нагрузка")
+        debug_info.append(f"• Debt/Equity={debt_equity:.2f}<0.5: Низкая долговая нагрузка")
     
     if roe and roe > 0.1:
         confirmations += 1
         score += 0.15
-        debug_info.append(f"ROE={roe:.2f}>10%: Высокая рентабельность")
+        debug_info.append(f"• ROE={roe:.2f}>10%: Высокая рентабельность")
     
     if market_cap and tvl and market_cap / tvl < 1:
         confirmations += 1
         score += 0.2
-        debug_info.append(f"Market Cap/TVL={market_cap/tvl:.2f}<1: Недооценка (крипта)")
+        debug_info.append(f"• Market Cap/TVL={market_cap/tvl:.2f}<1: Недооценка (крипта)")
     
-    target = latest_price + latest_atr * 5 if latest_atr else latest_price * 1.1
-    stop_loss = latest_price - latest_atr * 3 if latest_atr else latest_price * 0.9
+    target = latest_price + (5 * latest_atr if latest_atr else latest_price * 0.1)
+    stop_loss = latest_price - (3 * latest_atr if latest_atr else latest_price * 0.05)
+    potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
     
     if confirmations < 3:
         trend = "Неизвестно"
@@ -440,15 +444,17 @@ st.info(f"✅ Успешно загружено данных: {successful_fetche
 
 # Тренд рынка
 if trend_scores:
-    market_trend = max(set([x[1] for x in trend_scores]), key=[x[1] for x in trend_scores].count)
+    up_trend_count = sum(1 for x in trend_scores if x[1] == "Восходящий тренd")
+    total_confirmed = sum(1 for x in trend_scores if x[1] != "Неизвестно")
+    market_trend = "Восходящий тренd" if up_trend_count > total_confirmed / 2 else "Нисходящий тренd"
     confirmation_count = sum(1 for x in trend_scores if x[1] == market_trend)
     recommendation = (
-        "Ищите возможности для лонг-позиций в перепроданных активах с сильным импульсом." 
-        if market_trend == "Восходящий тренд" else 
-        "Рассмотрите шорт-позиции в переоцененных активах или хеджирование."
+        f"Ищите лонг-позиции в перепроданных активах с сильным импульсом." 
+        if market_trend == "Восходящий тренd" else 
+        f"Рассмотрите шорт-позиции в переоцененных активах или хеджирование."
     )
     st.success(
-        f"🚀 **Тренд рынка**: {market_trend} 📈\n"
+        f"🚀 **Тренд рынка**: {market_trend} {'📈' if market_trend == 'Восходящий тренd' else '📉'}\n"
         f"📊 Подтверждено {confirmation_count} активами с 3+ индикаторами.\n"
         f"💡 **Рекомендация**: {recommendation}"
     )
@@ -477,13 +483,16 @@ if st.button("🔥 Показать топ-активы (Премиум)"):
             for asset, trend, score, entry_signal, target, stop_loss, debug_info in top_assets:
                 confirmations = sum(1 for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"]))
                 signals = [info.split(":")[0] for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"])]
-                potential = ((target - stop_loss) / stop_loss * 100) if stop_loss else 5
+                potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
                 st.write(
-                    f"🚀 **{asset}**: {trend} {'📈' if trend == 'Восходящий тренд' else '📉'}\n"
-                    f"📊 **Подтверждено**: {confirmations} индикаторов ({', '.join(signals[:3])}).\n"
-                    f"🎯 **Цель**: ${target:.2f} (+{potential:.1f}%)\n"
-                    f"🛑 **Стоп-лосс**: ${stop_loss:.2f}\n"
-                    f"⏰ **Точка входа**: {entry_signal if entry_signal else 'Ждем сигнала'}"
+                    f"#{'STOCKS' if market == 'Акции' else 'CRYPTO'} #HYPE\n"
+                    f"🚀 **{asset}**: Классический сетап в {'лонг' if trend == 'Восходящий тренd' else 'шорт'}.\n"
+                    f"• Подтверждено {confirmations} индикаторов ({', '.join(signals[:3])}).\n"
+                    f"• Зона вибрации: {'Углы Ганна' if 'Gann' in ' '.join(debug_info) else 'Уровни EMA'}.\n"
+                    f"🎯 **Цель**: ${target:.2f} (+{potential:.1f}% вдоль угла Ганна).\n"
+                    f"🛑 **Стоп**: ${stop_loss:.2f} {'ниже EMA200' if trend == 'Восходящий тренd' else 'выше EMA50'}.\n"
+                    f"⏰ **Точка входа**: {entry_signal if entry_signal else 'Ждем сигнала'}.\n"
+                    f"💡 **Примечание**: Рынок манипулятивный, будьте осторожны с объемом."
                 )
         else:
             st.warning("🚨 Нет активов с достаточным количеством подтверждений (нужно 4+).")
@@ -495,14 +504,17 @@ chat_id_input = st.text_input("📬 Введите ваш Telegram Chat ID (от
 if st.button("📤 Отправить отчет в Telegram (Премиум)"):
     if trend_scores and chat_id_input:
         top_assets = sorted([x for x in trend_scores if x[2] >= 0.4], key=lambda x: x[2], reverse=True)[:3]
+        up_trend_count = sum(1 for x in trend_scores if x[1] == "Восходящий тренd")
+        total_confirmed = sum(1 for x in trend_scores if x[1] != "Неизвестно")
+        market_trend = "Восходящий тренd" if up_trend_count > total_confirmed / 2 else "Нисходящий тренd"
         confirmation_count = sum(1 for x in trend_scores if x[1] == market_trend)
         recommendation = (
-            "Ищите возможности для лонг-позиций в перепроданных активах с сильным импульсом." 
-            if market_trend == "Восходящий тренд" else 
-            "Рассмотрите шорт-позиции в переоцененных активах или хеджирование."
+            f"Ищите лонг-позиции в перепроданных активах с сильным импульсом." 
+            if market_trend == "Восходящий тренd" else 
+            f"Рассмотрите шорт-позиции в переоцененных активах или хеджирование."
         )
         message = (
-            f"🚀 *>*tS|TQTVLSYSTEM: Отчет по рынку {'📈' if market_trend == 'Восходящий тренд' else '📉'}*\n"
+            f"🚀 *>*tS|TQTVLSYSTEM: Отчет по рынку {'📈' if market_trend == 'Восходящий тренd' else '📉'}*\n"
             f"📅 *Дата*: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
             f"💹 *Рынок*: {market}\n"
             f"📊 *Тренд*: {market_trend} (подтверждено {confirmation_count} активами)\n"
@@ -512,18 +524,23 @@ if st.button("📤 Отправить отчет в Telegram (Премиум)"):
         for i, (asset, trend, score, entry_signal, target, stop_loss, debug_info) in enumerate(top_assets, 1):
             confirmations = sum(1 for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"]))
             signals = [info.split(":")[0] for info in debug_info if any(k in info for k in ["Перепроданность", "Переоцененность", "Поддержка", "Сопротивление", "Спрос", "Предложение", "Schiff", "Gann"])]
-            potential = ((target - stop_loss) / stop_loss * 100) if stop_loss else 5
+            potential = ((target - latest_price) / latest_price * 100) if stop_loss and target else 5
             message += (
-                f"{i}️⃣ *{asset}*: {trend} {'📈' if trend == 'Восходящий тренд' else '📉'}\n"
-                f"   📊 Подтверждено: {confirmations} индикаторов ({', '.join(signals[:3])})\n"
-                f"   🎯 Цель: ${target:.2f} (+{potential:.1f}%)\n"
-                f"   🛑 Стоп: ${stop_loss:.2f}\n"
-                f"   ⏰ Точка входа: {entry_signal if entry_signal else 'Ждем сигнала'}\n"
+                f"{i}️⃣ #{'STOCKS' if market == 'Акции' else 'CRYPTO'} #HYPE\n"
+                f"🚀 *{asset}*: Классический сетап в {'лонг' if trend == 'Восходящий тренd' else 'шорт'}.\n"
+                f"• Подтверждено {confirmations} индикаторов ({', '.join(signals[:3])}).\n"
+                f"• Зона вибрации: {'Углы Ганна' if 'Gann' in ' '.join(debug_info) else 'Уровни EMA'}.\n"
+                f"🎯 *Цель*: ${target:.2f} (+{potential:.1f}% вдоль угла Ганна).\n"
+                f"🛑 *Стоп*: ${stop_loss:.2f} {'ниже EMA200' if trend == 'Восходящий тренd' else 'выше EMA50'}.\n"
+                f"⏰ *Точка входа*: {entry_signal if entry_signal else 'Ждем сигнала'}.\n"
+                f"💡 *Примечание*: Рынок манипулятивный, будьте осторожны с объемом.\n"
             )
         result = send_telegram_report(chat_id_input, message)
         st.write(result)
     else:
         st.warning("🚨 Введите Chat ID и убедитесь, что данные для отчета доступны.")
+
+st.write("🔓 **Примечание**: Подробная аналитика и отчеты в Telegram доступны в Премиум-уровне (скоро).")
 
 st.write("🔓 **Примечание**: Подробная аналитика и отчеты в Telegram доступны в Премиум-уровне (скоро).")
 st.write("**Примечание**: Подробная аналитика и отчеты в Telegram доступны в Премиум-уровне (скоро).")
