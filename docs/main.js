@@ -1,89 +1,53 @@
-const backendUrl = "omni-screener-production.up.railway.app"; // сюда вставь свой URL Railway
+const productsTable = document.getElementById("productsTable").getElementsByTagName('tbody')[0];
+const createProductBtn = document.getElementById("createProductBtn");
 
-const createBtn = document.getElementById("createProductBtn");
-const tableBody = document.querySelector("#productsTable tbody");
-
-let products = {};
-
-// Рендер таблицы с подсветкой динамики
-function renderTable() {
-  tableBody.innerHTML = "";
-  for (const [id, p] of Object.entries(products)) {
-    const priceClass = p.current_price >= p.start_price ? "price-up" : "price-down";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${p.name}</td>
-      <td>${p.start_price.toFixed(2)}</td>
-      <td class="${priceClass}">${p.current_price.toFixed(2)}</td>
-      <td>${p.current_price - p.start_price >= 0 ? '+' : ''}${(p.current_price - p.start_price).toFixed(2)}</td>
-      <td>
-        <button class="btn btn-sm btn-primary" onclick="addView('${id}')">+Просмотр</button>
-      </td>
-    `;
-    tableBody.appendChild(tr);
-  }
-}
-
-// Создание нового товара
-createBtn.addEventListener("click", async () => {
-  const name = prompt("Название товара:");
-  const price = parseFloat(prompt("Стартовая/минимальная цена:"));
-  if (!name || isNaN(price)) return alert("Неверные данные!");
-
+createProductBtn.addEventListener("click", async () => {
   try {
-    const res = await fetch(`${backendUrl}/add_product`, {
+    const name = prompt("Введите название товара:");
+    const price = parseFloat(prompt("Введите стартовую цену товара:"));
+    if (!name || isNaN(price)) return alert("Некорректные данные");
+
+    // API-запрос к бекэнду Railway
+    const response = await fetch("https://omni-screener-production.up.railway.app/add_product", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, start_price: price, min_price: price })
+      body: JSON.stringify({ name, price })
     });
-    const data = await res.json();
+
+    const data = await response.json();
     if (data.success) {
-      products = data.products;
-      renderTable();
+      addProductRow(data.product);
     } else {
-      alert("Не удалось создать товар.");
+      alert("Не удалось создать товар");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Не удалось создать товар. Проверь бекэнд.");
+  } catch (e) {
+    console.error(e);
+    alert("Ошибка при создании товара");
   }
 });
 
-// Добавление «просмотра» (увеличение цены)
-async function addView(id) {
+function addProductRow(product) {
+  const row = productsTable.insertRow();
+  row.innerHTML = `
+    <td>${product.name}</td>
+    <td>${product.start_price}</td>
+    <td>${product.current_price}</td>
+    <td class="${product.delta >=0 ? 'price-up' : 'price-down'}">${product.delta}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}', this)">Удалить</button></td>
+  `;
+}
+
+async function deleteProduct(id, btn) {
   try {
-    const res = await fetch(`${backendUrl}/update_price`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product_id: id, views: 1 })
-    });
+    const res = await fetch(`https://omni-screener-production.up.railway.app/delete_product/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (data.success) {
-      products[id] = data.product;
-      renderTable();
+      btn.closest("tr").remove();
     } else {
-      alert("Не удалось обновить цену.");
+      alert("Не удалось удалить товар");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Не удалось обновить цену.");
+  } catch (e) {
+    console.error(e);
+    alert("Ошибка при удалении товара");
   }
 }
-
-// Загрузка товаров при старте
-async function loadProducts() {
-  try {
-    const res = await fetch(`${backendUrl}/get_products`);
-    const data = await res.json();
-    products = data.products || {};
-    renderTable();
-  } catch (err) {
-    console.error(err);
-    alert("Не удалось загрузить товары.");
-  }
-}
-
-// Обновляем таблицу каждые 10 секунд для динамики
-setInterval(loadProducts, 10000);
-
-loadProducts();
