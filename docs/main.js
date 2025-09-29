@@ -1,4 +1,4 @@
-const backendUrl = "omni-screener.railway.internal"; // сюда вставь свой URL Railway
+const backendUrl = "omni-screener-production.up.railway.app"; // сюда вставь свой URL Railway
 
 const createBtn = document.getElementById("createProductBtn");
 const tableBody = document.querySelector("#productsTable tbody");
