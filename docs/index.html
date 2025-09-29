@@ -9,21 +9,21 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="bg-primary text-white py-3">
-  <div class="container">
-    <h1 class="mb-1">TQTVL System</h1>
-    <p class="mb-0">Биржа товаров с динамическими ценами</p>
+<header class="bg-primary text-white py-3 shadow-sm">
+  <div class="container d-flex justify-content-between align-items-center">
+    <h1 class="mb-0 fs-4">TQTVL System</h1>
+    <span class="fs-6">Биржа товаров с динамическими ценами</span>
   </div>
 </header>
 
 <main class="container my-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Товары</h2>
+    <h2 class="fs-5">Товары</h2>
     <button id="createProductBtn" class="btn btn-success">Добавить товар</button>
   </div>
 
-  <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle" id="productsTable">
+  <div class="table-responsive shadow-sm rounded bg-white p-3">
+    <table class="table table-hover align-middle" id="productsTable">
       <thead class="table-light">
         <tr>
           <th>Название</th>
@@ -40,7 +40,7 @@
   </div>
 </main>
 
-<footer class="bg-primary text-white py-3 text-center">
+<footer class="bg-primary text-white py-3 text-center shadow-lg">
   © 2025 TQTVL System
 </footer>
 
