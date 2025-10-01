@@ -6,22 +6,21 @@
     <title>Бассейн / POOL</title>
     <style>
         body {
-            background-color: #1c2526; /* Тёмный фон с оттенком 90-х */
-            color: #a9d6df; /* Мягкий голубой для читаемости */
+            background-color: #1c2526; /* Тёмный фон 90-х */
+            color: #a9d6df; /* Мягкий голубой */
             font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт */
             margin: 0;
             padding: 0;
-            width: 320px; /* Ширина для Mini App */
-            height: 500px; /* Высота для прокрутки */
+            width: 320px;
+            height: 500px;
             overflow-x: hidden;
-            overflow-y: auto; /* Вертикальная прокрутка */
+            overflow-y: auto;
             background-image: 
                 linear-gradient(rgba(169, 214, 223, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(169, 214, 223, 0.05) 1px, transparent 1px);
-            background-size: 20px 20px; /* Лёгкая сетка */
+            background-size: 20px 20px;
         }
 
-        /* Неон-эффект (мягкий) */
         .neon {
             text-shadow: 0 0 3px #a9d6df, 0 0 6px #a9d6df;
             color: #a9d6df;
@@ -30,7 +29,7 @@
         /* Верхняя панель */
         .top-panel {
             background-color: #2c383a;
-            padding: 10px;
+            padding: 10px 20px; /* Отступы слева/справа */
             text-align: center;
             border-bottom: 1px solid #a9d6df;
             width: 100%;
@@ -78,10 +77,11 @@
             padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 10px auto;
+            margin: 10px auto; /* Центрирование */
             border-radius: 3px;
             max-width: 280px; /* Пространство по бокам */
             box-sizing: border-box;
+            width: 100%;
         }
 
         /* Таблица участников */
@@ -113,7 +113,7 @@
 
         .icon {
             margin-left: 5px;
-            color: #d4a9e2; /* Мягкий пурпурный акцент */
+            color: #d4a9e2; /* Мягкий пурпурный */
         }
     </style>
     <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
@@ -167,12 +167,12 @@
             }
         }
 
-        // Функция для вклада (минимум 0.15 USDT)
+        // Функция для вклада
         function contribute() {
             const address = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
             const amount = 0.15 * 1e9; // 0.15 USDT в наноTON
             const tonLink = `ton://transfer/${address}?amount=${amount}`;
-            window.location.href = tonLink;
+            Telegram.WebApp.openTelegramLink(tonLink); // Открывает в Telegram (Bitget/MetaMask)
         }
 
         // Обновление таблицы с реальными данными (заглушка, будет заменена на API)
