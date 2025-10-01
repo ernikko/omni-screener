@@ -1,390 +1,488 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Бассейн / POOL</title>
-    <style>
-        body {
-            background-color: #0a0a0a; /* Глубокий чёрный фон ночи */
-            color: #a9e6e6; /* Бирюзовый для текста */
-            font-family: 'Press Start 2P', monospace; /* Ретро-шрифт */
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden; /* Убран горизонтальный скролл */
-            overflow-y: auto; /* Вертикальная прокрутка при избытке элементов */
-            background-image: 
-                radial-gradient(circle at 50% 80%, rgba(0, 0, 0, 0.8), #0a0a0a), /* Мягкий туман */
-                linear-gradient(to bottom, rgba(255, 105, 180, 0.2) 0%, transparent 50%), /* Розовый неон от бассейна */
-                linear-gradient(to top, rgba(0, 255, 204, 0.2) 0%, transparent 50%); /* Бирюзовый неон */
-            background-blend-mode: overlay; /* Эффект отражений */
-            position: relative;
-            animation: fog 20s ease-in-out infinite alternate; /* Движущийся туман */
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>POOL / Бассейн</title>
+  <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
+  <style>
+    /* ========== БАЗА ========== */
+    :root { --bg:#0a0a0a; --neon-pink:#ff69b4; --neon-cyan:#a9e6e6; --lamp:#ffd700; }
+    * { box-sizing: border-box; }
+    html,body { height:100%; }
+    body {
+      margin:0; padding:0;
+      background: var(--bg);
+      color: var(--neon-cyan);
+      font-family: 'Press Start 2P', Courier, monospace;
+      overflow-x:hidden; overflow-y:auto;
+      position:relative;
+      /* лёгкий неоновый градиент / туман */
+      background-image:
+        radial-gradient(circle at 50% 80%, rgba(0,0,0,0.85), rgba(10,10,10,1)),
+        linear-gradient(to bottom, rgba(255,105,180,0.12) 0%, transparent 40%),
+        linear-gradient(to top, rgba(0,255,204,0.08) 0%, transparent 40%);
+      background-blend-mode: overlay;
+      min-height:100vh;
+    }
+    body::after{
+      content:""; position:absolute; left:0; right:0; bottom:0; height:140px;
+      background: linear-gradient(to top, rgba(255,215,0,0.06), transparent);
+      filter: blur(12px); pointer-events:none;
+    }
 
-        @keyframes fog {
-            0% { background-position: 0 0; }
-            100% { background-position: 10px 5px; } /* Лёгкое движение тумана */
-        }
+    /* ========== КОНТЕЙНЕР ========== */
+    .container{
+      max-width:360px; width:100%;
+      margin: 0 auto;
+      padding: 18px;
+    }
 
-        body::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 150px;
-            background: linear-gradient(to top, rgba(255, 215, 0, 0.1) 0%, transparent 100%); /* Жёлтые лампы мотеля */
-            filter: blur(15px); /* Мягкий эффект ламп */
-            pointer-events: none;
-            animation: lampFlicker 3s infinite alternate; /* Мерцание ламп */
-        }
+    /* ========== ВЕРХ (заголовок + контролы) ========== */
+    .top-panel{
+      display:flex;
+      flex-wrap:wrap;           /* чтобы элементы не вылазили по горизонтали */
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      padding:10px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(169,230,230,0.08);
+      border-radius:8px;
+      margin-bottom:14px;
+      box-shadow: 0 0 14px rgba(169,230,230,0.04);
+    }
 
-        @keyframes lampFlicker {
-            0% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
+    .title{
+      flex-basis:100%;          /* заголовок на отдельную строку */
+      text-align:center;
+      color: var(--neon-pink);
+      text-shadow: 0 0 8px var(--neon-pink), 0 0 16px var(--neon-cyan);
+      font-size:1.05rem;
+      margin:0;
+    }
 
-        .neon {
-            text-shadow: 0 0 5px #ff69b4, 0 0 10px #a9e6e6; /* Розовый и бирюзовый неон */
-            color: #ff69b4; /* Заголовки — розовый неон */
-        }
+    .top-controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+    }
 
-        /* Контейнер для всего контента */
-        .container {
-            max-width: 320px; /* Фиксированная максимальная ширина */
-            width: 100%; /* Занимает доступное пространство до max-width */
-            margin: 0 auto; /* Равные отступы слева и справа */
-            padding: 0 20px; /* Внутренние отступы */
-        }
+    .total-pool{
+      background:#000;
+      border:2px solid #00ff00;
+      color:#00ff00;
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:0.78rem;
+      text-align:center;
+      min-width:80px;
+      max-width:60%;
+      flex:1 1 auto;
+      animation: flicker 1.6s infinite alternate;
+    }
 
-        /* Верхняя панель */
-        .top-panel {
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 10px;
-            text-align: center;
-            border-bottom: 2px solid #a9e6e6;
-            display: inline-flex;
-            margin: 0 auto 20px;
-            gap: 10px;
-            justify-content: center;
-            align-items: center;
-        }
+    .contribute-button{
+      background: var(--neon-pink);
+      border:2px solid rgba(169,230,230,0.4);
+      color:#0a0a0a;
+      padding:8px 12px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:0.78rem;
+      flex:0 0 auto;
+      white-space:nowrap;
+      transition: transform .12s ease, box-shadow .12s ease;
+      box-shadow: 0 0 6px rgba(255,105,180,0.35);
+    }
+    .contribute-button:hover{ transform: scale(1.04); box-shadow: 0 0 14px rgba(255,105,180,0.45); }
+    .contribute-button:active{ transform: scale(.98); }
 
-        .title {
-            font-size: 1.2em;
-            margin: 0;
-            text-transform: uppercase;
-            color: #ff69b4; /* Розовый неон для заголовка */
-        }
+    @keyframes flicker { 0%{opacity:.9} 50%{opacity:1} 100%{opacity:.9} }
 
-        .total-pool {
-            background-color: #000;
-            border: 2px solid #00ff00; /* Зелёный цвет табло */
-            color: #00ff00;
-            padding: 8px;
-            font-size: 0.9em;
-            border-radius: 5px;
-            width: 120px;
-            text-align: center;
-            animation: flicker 1.5s infinite alternate; /* Лёгкое мигание */
-        }
+    /* ========== Таймер ========== */
+    .timer{
+      background: rgba(0,0,0,0.6);
+      border:2px solid #00ff00;
+      color:#00ff00;
+      padding:10px;
+      border-radius:6px;
+      text-align:center;
+      margin:12px 0;
+      font-size:0.9rem;
+      animation: timerFlicker 2s infinite alternate;
+    }
+    @keyframes timerFlicker { 0%{opacity:.95} 100%{opacity:1} }
 
-        @keyframes flicker {
-            0% { opacity: 0.9; }
-            50% { opacity: 1; }
-            100% { opacity: 0.9; }
-        }
+    /* ========== Список участников ========== */
+    .participants{ margin: 12px 0; display:block; }
+    .participant-card{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:8px;
+      background: rgba(0,0,0,0.65);
+      padding:8px;
+      border-radius:6px;
+      margin-bottom:8px;
+      border:1px solid rgba(255,105,180,0.12);
+      box-shadow: 0 0 8px rgba(169,230,230,0.03);
+      font-size:0.78rem;
+    }
+    .participant-left { display:flex; flex-direction:column; gap:4px; }
+    .participant-nick{ color:var(--neon-cyan); font-weight:700; }
+    .participant-amount{ color:#ffff66; font-weight:700; }
+    .participant-chance{ color:var(--neon-cyan); font-size:0.75rem; opacity:0.95; }
 
-        .contribute-button {
-            background-color: #ff69b4; /* Ярко-розовая кнопка */
-            border: 2px solid #a9e6e6;
-            color: #0a0a0a;
-            padding: 10px 20px;
-            font-size: 0.9em;
-            border-radius: 5px;
-            cursor: pointer;
-            text-transform: uppercase;
-            text-shadow: 0 0 5px #a9e6e6;
-            transition: transform 0.2s, box-shadow 0.2s;
-            animation: buttonGlow 2s ease-in-out infinite alternate; /* Неоновое свечение */
-        }
+    /* ========== Рулетка ========== */
+    .roulette{
+      background: rgba(0,0,0,0.6);
+      border-radius:8px;
+      padding:12px;
+      margin:16px 0 40px;
+      border:1px solid rgba(255,105,180,0.12);
+      text-align:center;
+      box-shadow: 0 0 18px rgba(169,230,230,0.03);
+    }
+    .roulette-value{ color:var(--neon-cyan); margin-bottom:8px; display:block; }
+    .roulette-diagram{ width:200px; height:200px; margin: 0 auto; border-radius:50%; overflow:hidden; }
 
-        .contribute-button:hover {
-            transform: scale(1.05); /* Подпрыгивание */
-            background-color: #d1478e;
-        }
+    /* ========== МОДАЛ ФАЛЬБЭК (копирование адреса) ========== */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    .modal { background: #071012; border-radius:8px; padding:14px; width: min(340px, calc(100% - 32px)); box-shadow: 0 8px 24px rgba(0,0,0,0.6); border:1px solid rgba(169,230,230,0.06); color:var(--neon-cyan); }
+    .modal h4{ margin:0 0 8px 0; color:var(--neon-pink); text-shadow:0 0 8px var(--neon-pink); font-size:0.9rem;}
+    .address-box{ background:#000; padding:8px; border-radius:6px; margin:8px 0; color:#fff; font-family:monospace; font-size:0.82rem; word-break:break-all;}
+    .modal .row{ display:flex; gap:8px; margin-top:10px; }
+    .btn { padding:8px 10px; border-radius:6px; cursor:pointer; border:none; }
+    .btn-copy{ background:var(--neon-cyan); color:#071012; }
+    .btn-open{ background:var(--neon-pink); color:#071012; }
 
-        .contribute-button:active {
-            animation: buttonFlash 0.1s ease; /* Мигание при клике */
-        }
-
-        @keyframes buttonGlow {
-            0% { box-shadow: 0 0 5px #a9e6e6; }
-            100% { box-shadow: 0 0 15px #ff69b4; }
-        }
-
-        @keyframes buttonFlash {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        /* Таймер */
-        .timer {
-            background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid #00ff00; /* Зелёные цифры табло мотеля */
-            color: #00ff00;
-            padding: 10px;
-            font-size: 1em;
-            text-align: center;
-            margin: 20px 0;
-            border-radius: 5px;
-            width: 100%;
-            animation: timerFlicker 2s infinite alternate; /* Лёгкое мигание LED */
-        }
-
-        @keyframes timerFlicker {
-            0% { opacity: 0.95; }
-            100% { opacity: 1; }
-        }
-
-        /* Список участников */
-        .participants {
-            margin: 20px 0;
-        }
-
-        .participant-card {
-            background-color: #0a0a0a;
-            border: 2px solid #ff69b4; /* Неоновая рамка */
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8em;
-            box-shadow: 0 0 10px #ff69b4; /* Мягкое свечение рамки */
-            border-image: linear-gradient(to right, #ff69b4, #a9e6e6) 1; /* Градиентная рамка */
-        }
-
-        .participant-nick {
-            color: #a9e6e6; /* Бирюзовый для ника */
-        }
-
-        .participant-amount {
-            color: #ffff00; /* Жёлтый эффект лампы для суммы */
-        }
-
-        /* Шансы на победу */
-        .roulette {
-            background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid #ff69b4;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-            text-align: center;
-            box-shadow: 0 0 20px #a9e6e6; /* Мягкое свечение колеса */
-        }
-
-        .roulette-value {
-            color: #a9e6e6;
-            font-size: 0.9em;
-            text-shadow: 0 0 5px #a9e6e6;
-        }
-
-        .roulette-diagram {
-            margin-top: 10px;
-            width: 200px;
-            height: 200px;
-            position: relative;
-            margin: 0 auto;
-            box-shadow: 0 0 15px #ff69b4; /* Свечение колеса */
-            border-radius: 50%;
-            background-color: #0a0a0a;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%; /* Круглая форма */
-        }
-    </style>
-    <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
+    /* Адаптив (очень узкие экраны) */
+    @media (max-width:340px){
+      .container{ padding:12px; }
+      .roulette-diagram{ width:160px; height:160px; }
+      .contribute-button{ padding:8px 10px; font-size:0.72rem; }
+      .total-pool{ font-size:0.72rem; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Верхняя панель -->
-        <div class="top-panel">
-            <h2 class="title neon">POOL / Бассейн</h2>
-            <input type="text" class="total-pool" id="total-pool" value="0.00 USDT" readonly>
-            <button class="contribute-button" onclick="contribute()">Внести пул</button>
-        </div>
+  <div class="container">
+    <div class="top-panel">
+      <h2 class="title neon">POOL / Бассейн</h2>
 
-        <!-- Таймер -->
-        <div class="timer" id="timer">Ожидание старта</div>
-
-        <!-- Список участников -->
-        <div class="participants" id="participants-list">
-            <!-- Данные заполняются динамически -->
-        </div>
-
-        <!-- Шансы на победу -->
-        <div class="roulette">
-            <span class="roulette-value" id="roulette-value">Шанс: 50%</span>
-            <div class="roulette-diagram">
-                <canvas id="roulette-canvas"></canvas>
-            </div>
-        </div>
+      <div class="top-controls">
+        <input id="total-pool" class="total-pool" value="0.00 USDT" readonly />
+        <button id="contributeBtn" class="contribute-button">Внести пул</button>
+      </div>
     </div>
 
-    <script>
-        // Таймер
-        let timeLeft = 900; // 15 минут в секундах
-        let poolStarted = false;
+    <div id="timer" class="timer">Ожидание старта</div>
 
-        function updateTimer() {
-            if (poolStarted) {
-                let min = Math.floor(timeLeft / 60);
-                let sec = timeLeft % 60;
-                document.getElementById('timer').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-                timeLeft--;
-                if (timeLeft <= 0) {
-                    poolStarted = false;
-                    timeLeft = 900;
-                    updateParticipants();
-                }
-            } else {
-                document.getElementById('timer').innerText = "Ожидание старта";
-            }
+    <div id="participants-list" class="participants"></div>
+
+    <div class="roulette">
+      <span id="roulette-value" class="roulette-value">Шанс: 0%</span>
+      <div class="roulette-diagram">
+        <canvas id="roulette-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модал fallback -->
+  <div id="modal-backdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <h4>Перейти в кошелёк</h4>
+      <div>Если deeplink не открылся автоматически, переведите минимум <strong>0.15 USDT</strong на адрес ниже или откройте его в вашем кошельке.</div>
+      <div id="addr" class="address-box"></div>
+      <div class="row">
+        <button id="copyBtn" class="btn btn-copy">Копировать адрес</button>
+        <button id="openBtn" class="btn btn-open">Открыть ссылку</button>
+        <button id="closeModal" class="btn" style="background:#222;color:#fff;">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     *  ДАННЫЕ / СТЕЙТ
+     ***********************/
+    // На проде participantsData берём с сервера через webhook; здесь — пример.
+    let participantsData = [
+      // пример — можно удалить, когда будет реальный API
+      // {id:'User1', amount:0.20},
+      // {id:'User2', amount:0.10}
+    ];
+
+    let poolStarted = false;
+    let timeLeft = 900; // 15 мин
+    const MIN_AMOUNT = 0.15; // USDT
+
+    /***********************
+     *  UI ЭЛЕМЕНТЫ
+     ***********************/
+    const totalInput = document.getElementById('total-pool');
+    const participantsList = document.getElementById('participants-list');
+    const rouletteValue = document.getElementById('roulette-value');
+    const contributeBtn = document.getElementById('contributeBtn');
+    const canvas = document.getElementById('roulette-canvas');
+
+    // Модал fallback
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    const addrBox = document.getElementById('addr');
+    const copyBtn = document.getElementById('copyBtn');
+    const openBtn = document.getElementById('openBtn');
+    const closeModal = document.getElementById('closeModal');
+
+    /***********************
+     *  КНОПКА ВНЕСТИ ПУЛ
+     ***********************/
+    const YOUR_ADDRESS = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
+
+    function showFallbackModal(address, tonLink){
+      addrBox.textContent = address;
+      modalBackdrop.style.display = 'flex';
+      copyBtn.onclick = async () => {
+        try { await navigator.clipboard.writeText(address); copyBtn.textContent = "Скопировано"; setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); }
+        catch(e){ copyBtn.textContent="Ошибка"; setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); }
+      };
+      openBtn.onclick = () => {
+        // Попробуем открыть deeplink явно
+        window.open(tonLink, '_blank');
+      };
+      closeModal.onclick = () => modalBackdrop.style.display = 'none';
+    }
+
+    function contribute(){
+      // соберём deeplink — для TON используется форма ton://transfer/<address>?amount=<nanoton>
+      const amountNano = Math.round(MIN_AMOUNT * 1e9);
+      const tonLink = `ton://transfer/${YOUR_ADDRESS}?amount=${amountNano}`;
+
+      // 1) если Telegram.WebApp доступен — просим его открыть ссылку (openTelegramLink обычно работает)
+      try {
+        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openTelegramLink === 'function') {
+          Telegram.WebApp.openTelegramLink(tonLink);
+          // fallback: если через 700ms ничего не произошло — показываем модал с адресом
+          setTimeout(()=> showFallbackModal(YOUR_ADDRESS, tonLink), 900);
+          return;
         }
+      } catch(e){
+        // ignore
+      }
 
-        // Функция для вклада
-        function contribute() {
-            const address = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
-            const amount = 0.15 * 1e9; // 0.15 USDT в наноTON
-            const tonLink = `ton://transfer/${address}?amount=${amount}`;
-            Telegram.WebApp.openTelegramLink(tonLink); // Открывает в Telegram
+      // 2) попытка открыть через window.open (будет работать в некоторых кошельках/браузерах)
+      try {
+        const newWindow = window.open(tonLink, '_blank');
+        if (newWindow) {
+          // открылось — всё ок (в мобильных браузерах часто срабатывает)
+          return;
         }
+      } catch(e){
+        // ignore
+      }
 
-        // Обновление списка участников
-        function updateParticipants() {
-            const participantsList = document.getElementById('participants-list');
-            participantsList.innerHTML = '';
+      // 3) если ничего из выше не сработало — показываем модал с инструкцией и адресом
+      showFallbackModal(YOUR_ADDRESS, tonLink);
+    }
 
-            // Пример: данные из Google Sheets (заменить на реальный API)
-            let participants = []; // Здесь будут реальные данные от бота
+    contributeBtn.addEventListener('click', contribute);
 
-            // Симуляция первого вклада
-            if (Math.random() > 0.5) {
-                participants = [
-                    { id: "User1", amount: 0.20 },
-                    { id: "User2", amount: 0.10 }
-                ];
-                if (!poolStarted && participants[0].amount >= 0.15) {
-                    poolStarted = true;
-                }
-            }
-
-            if (!poolStarted && participants.length === 0) {
-                document.getElementById('total-pool').value = "0.00 USDT";
-                document.getElementById('roulette-value').textContent = "Шанс: 0%";
-                drawRoulette([], 0);
-                return;
-            }
-
-            // Сортировка по вкладу
-            participants.sort((a, b) => b.amount - a.amount);
-            const totalPool = participants.reduce((sum, p) => sum + p.amount, 0);
-            document.getElementById('total-pool').value = `${totalPool.toFixed(2)} USDT`;
-
-            // Перерасчёт шансов перед использованием
-            let totalChance = 0;
-            participants.forEach(p => {
-                p.chance = (p.amount / totalPool * 100).toFixed(1);
-                totalChance += parseFloat(p.chance);
-            });
-            // Корректировка шансов до 100% (если есть погрешность)
-            if (totalChance !== 100 && participants.length > 0) {
-                const adjustment = 100 - totalChance;
-                participants[0].chance = (parseFloat(participants[0].chance) + adjustment).toFixed(1);
-            }
-
-            // Отображение карточек
-            participants.forEach(participant => {
-                const card = document.createElement('div');
-                card.className = 'participant-card';
-                card.innerHTML = `
-                    <span class="participant-info">${participant.id} — ${participant.amount.toFixed(2)} USDT — ${participant.chance}%</span>
-                `;
-                participantsList.appendChild(card);
-            });
-
-            // Шанс лидера
-            const chance = participants.length > 0 ? participants[0].chance : "0";
-            document.getElementById('roulette-value').textContent = `Шанс лидера: ${chance}%`;
-
-            // Диаграмма рулетки
-            drawRoulette(participants, totalPool);
+    /***********************
+     *  ТАЙМЕР
+     ***********************/
+    function updateTimer(){
+      const el = document.getElementById('timer');
+      if (poolStarted) {
+        const m = Math.floor(timeLeft / 60);
+        const s = timeLeft % 60;
+        el.innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        timeLeft--;
+        if (timeLeft <= 0) {
+          poolStarted = false;
+          timeLeft = 900;
+          // здесь должен сработать розыгрыш на сервере; пока просто обновляем UI
+          // на проде: делай fetch на сервер, чтобы он выполнил draw и вернул новый state
         }
+      } else {
+        el.innerText = "Ожидание старта";
+      }
+    }
 
-        // Диаграмма рулетки (круговая)
-        function drawRoulette(participants, totalPool) {
-            const canvas = document.getElementById('roulette-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 200;
-            canvas.height = 200;
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = 100;
-            let startAngle = 0;
+    /***********************
+     *  ОБНОВЛЕНИЕ УЧАСТНИКОВ
+     *  (на проде — получать данные с сервера)
+     ***********************/
+    function setParticipantsFromServer(dataArray){
+      // ожидаем массив {id, amount}
+      participantsData = Array.isArray(dataArray) ? dataArray.slice() : [];
+      if (participantsData.length>0 && !poolStarted) poolStarted = true;
+      renderParticipants();
+    }
 
-            // Очистка канваса
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Для локального теста — раскомментируй:
+    // setParticipantsFromServer([{id:'NeonKid', amount:0.3},{id:'PoolGirl', amount:0.15},{id:'Lucky', amount:0.05}]);
 
-            // Цвета секторов (неоновые)
-            const colors = ['#ff69b4', '#a9e6e6', '#ffff00', '#8a2be2']; // Розовый, бирюзовый, жёлтый, фиолетовый
+    function renderParticipants(){
+      participantsList.innerHTML = '';
+      const total = participantsData.reduce((s,p)=>s+p.amount,0);
+      totalInput.value = `${total.toFixed(2)} USDT`;
+      if (total === 0) {
+        rouletteValue.textContent = 'Шанс: 0%';
+        drawRoulette([],0);
+        return;
+      }
 
-            if (participants.length > 0) {
-                participants.forEach((p, i) => {
-                    const sliceAngle = (p.amount / totalPool) * 2 * Math.PI;
-                    ctx.fillStyle = colors[i % colors.length];
-                    ctx.beginPath();
-                    ctx.moveTo(centerX, centerY);
-                    ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
-                    ctx.closePath();
-                    ctx.fill();
-                    // Мягкое свечение
-                    ctx.shadowColor = colors[i % colors.length];
-                    ctx.shadowBlur = 10;
-                    ctx.fill();
-                    ctx.shadowBlur = 0; // Сброс свечения
-                    startAngle += sliceAngle;
-                });
-                // Плавная перерисовка (анимация)
-                function animate(angle) {
-                    if (angle < startAngle) {
-                        requestAnimationFrame(() => animate(angle + 0.1));
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        // Перерисовка секторов с текущим углом
-                        // (упрощённо, полная анимация требует больше кода)
-                    }
-                }
-                animate(0);
-            }
-        }
+      // рассчитываем шансы и корректируем погрешности
+      let totalChance = 0;
+      participantsData.forEach(p => {
+        p.chance = +( (p.amount/total)*100 ).toFixed(1);
+        totalChance += p.chance;
+      });
+      // поправка
+      const diff = +(100 - totalChance).toFixed(1);
+      if (participantsData.length>0 && Math.abs(diff) >= 0.1) {
+        participantsData[0].chance = +(parseFloat(participantsData[0].chance) + diff).toFixed(1);
+      }
 
-        // Обновление каждую секунду
-        setInterval(() => {
-            updateTimer();
-            updateParticipants();
-        }, 1000);
+      // сортировка по вкладу
+      participantsData.sort((a,b)=>b.amount - a.amount);
 
-        // Инициализация Telegram Web App
-        if (window.Telegram && window.Telegram.WebApp) {
-            Telegram.WebApp.ready();
-            Telegram.WebApp.expand();
-        }
-    </script>
+      // рендер карточек
+      participantsData.forEach(p=>{
+        const card = document.createElement('div');
+        card.className = 'participant-card';
+        card.innerHTML = `
+          <div class="participant-left">
+            <div class="participant-nick">${escapeHtml(p.id)}</div>
+            <div class="participant-chance">${p.chance}% шанс</div>
+          </div>
+          <div class="participant-amount">${p.amount.toFixed(2)} USDT</div>
+        `;
+        participantsList.appendChild(card);
+      });
+
+      rouletteValue.textContent = `Шанс лидера: ${participantsData[0].chance}%`;
+      drawRoulette(participantsData, total);
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    /***********************
+     *  РИСОВАНИЕ РУЛЕТКИ (canvas)
+     ***********************/
+    function resizeCanvasForHiDPI(c){
+      const dpr = window.devicePixelRatio || 1;
+      const rect = c.getBoundingClientRect();
+      c.width = Math.round(rect.width * dpr);
+      c.height = Math.round(rect.height * dpr);
+      const ctx = c.getContext('2d');
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      return ctx;
+    }
+
+    function drawRoulette(participants, totalPool){
+      const ctx = resizeCanvasForHiDPI(canvas);
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const cx = w/2, cy = h/2, radius = Math.min(w,h)/2 - 4;
+
+      // clear
+      ctx.clearRect(0,0,w,h);
+
+      if (!participants || participants.length===0 || totalPool <= 0){
+        // нарисуем пустой круг
+        ctx.beginPath();
+        ctx.fillStyle = '#071012';
+        ctx.arc(cx,cy,radius,0,Math.PI*2);
+        ctx.fill();
+        // легкая рамка
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(169,230,230,0.06)';
+        ctx.stroke();
+        return;
+      }
+
+      // цвета
+      const colors = ['#ff69b4','#a9e6e6','#ffff66','#8a2be2','#ffb347','#00ffd1'];
+
+      let start = -Math.PI/2;
+      for (let i=0;i<participants.length;i++){
+        const p = participants[i];
+        const angle = (p.amount/totalPool) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.arc(cx,cy,radius,start,start+angle);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        // мягкое свечение
+        ctx.shadowColor = colors[i % colors.length];
+        ctx.shadowBlur = 14;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        start += angle;
+      }
+
+      // внутренний круг (центральная «купольная» зона)
+      ctx.beginPath();
+      ctx.fillStyle = '#071012';
+      ctx.arc(cx, cy, radius*0.45, 0, Math.PI*2);
+      ctx.fill();
+
+      // внешняя тонкая неоновая рамка
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,105,180,0.18)';
+      ctx.stroke();
+
+      // подписи: покажем легенду (имена и проценты) по кругу — здесь упростим: в центр — Top N
+      ctx.fillStyle = 'rgba(169,230,230,0.95)';
+      ctx.font = '400 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Рулетка шансов', cx, cy - 8);
+      ctx.fillStyle = '#ffff66';
+      ctx.fillText(`${participants[0].id}: ${participants[0].chance}%`, cx, cy + 12);
+    }
+
+    /***********************
+     *  ЦИКЛ ОБНОВЛЕНИЯ
+     ***********************/
+    // На проде вместо этой функции делай fetch к твоему webhook, который отдаёт
+    // {totalPool, participants: [{id, amount}], timeLeft}
+    function fetchAndApplyMock(){
+      // Пример мок-данных (удали / замени на реальный fetch)
+      if (participantsData.length === 0) {
+        // пока пусто — закину тест для удобства
+        participantsData = [
+          {id:'NeonKid', amount:0.30},
+          {id:'PoolGirl', amount:0.15},
+          {id:'Lucky', amount:0.05}
+        ];
+        poolStarted = true;
+      }
+      renderParticipants();
+    }
+
+    // Обновляем таймер и данные каждую секунду
+    setInterval(()=>{
+      updateTimer();
+    }, 1000);
+
+    // Данные (fetch) раз в 2 секунды — на проде заменяй на ajax/fetch к backend
+    setInterval(()=>{
+      // вместо рандома — реальный fetch:
+      // fetch('/update').then(r=>r.json()).then(setParticipantsFromServer);
+      fetchAndApplyMock(); // временно
+    }, 2000);
+
+    // начальный рендер
+    renderParticipants();
+    drawRoulette(participantsData, participantsData.reduce((s,p)=>s+p.amount,0));
+
+    // ресайз canvas при изменении размеров окна
+    window.addEventListener('resize', ()=> drawRoulette(participantsData, participantsData.reduce((s,p)=>s+p.amount,0)) );
+
+    // Telegram WebApp ready
+    if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.ready === 'function') {
+      try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e){}
+    }
+  </script>
 </body>
 </html>
