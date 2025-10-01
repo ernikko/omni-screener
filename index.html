@@ -3,58 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POOL 🏊‍♂️ - Розыгрыши USDT</title>
+    <title>Бассейн / POOL</title>
     <style>
-        body { font-family: 'Arial', sans-serif; background: #f0f8ff; color: #333; margin: 0; padding: 0; }
-        .header { background: #007bff; color: white; padding: 20px; text-align: center; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .pool-card { background: #e3f2fd; border: 1px solid #007bff; border-radius: 8px; padding: 15px; margin: 10px 0; }
-        .timer { font-size: 1.5em; color: #dc3545; font-weight: bold; }
+        body {
+            background-color: #121212; /* Тёмно-серый фон */
+            color: #f0f0f0; /* Светло-белый текст */
+            font-family: 'Courier New', monospace; /* Ретро-шрифт, как в 90-х */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Неон-эффект для текста */
+        .neon-text {
+            text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+            color: #fff;
+        }
+
+        /* Верхняя панель */
+        .top-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-bottom: 1px solid #333;
+        }
+
+        .title-input {
+            background-color: #333;
+            border: none;
+            color: #f0f0f0;
+            padding: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+
+        .price-input {
+            background-color: #333;
+            border: none;
+            color: #f0f0f0;
+            padding: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            width: 150px;
+        }
+
+        .contribute-button {
+            background-color: #007bff;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-left: 10px;
+        }
+
+        .contribute-button:hover {
+            background-color: #0056b3;
+        }
+
+        .search-input {
+            background-color: #333;
+            border: none;
+            color: #f0f0f0;
+            padding: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            width: 200px;
+            margin-left: 10px;
+        }
+
+        /* Таблица участников */
+        .table-container {
+            margin: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #1e1e1e;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            background-color: #333;
+        }
+
+        .icon {
+            margin-left: 10px;
+            font-size: 0.9em;
+            color: #ff00ff; /* Неон-розовый */
+        }
+
+        /* Таймер */
+        .timer {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            background-color: #000;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1.5em;
+            box-shadow: 0 0 10px #ff00ff;
+        }
+
+        /* Боковое меню слева */
+        .side-menu {
+            position: fixed;
+            left: 0;
+            top: 100px;
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-right: 1px solid #333;
+            height: calc(100vh - 100px);
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .menu-icon {
+            margin: 15px 0;
+            cursor: pointer;
+            font-size: 1.5em;
+            color: #f0f0f0;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+
+        .menu-icon:hover {
+            color: #ff00ff;
+        }
+
+        /* Нижняя панель */
+        .bottom-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #1e1e1e;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #333;
+        }
+
+        .bottom-icons {
+            display: flex;
+            align-items: center;
+        }
+
+        .bottom-icon {
+            margin: 0 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #f0f0f0;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+
+        .bottom-icon:hover {
+            color: #ff00ff;
+        }
+
+        .bottom-buttons {
+            display: flex;
+            align-items: center;
+        }
+
+        .bottom-button {
+            background-color: #333;
+            color: #f0f0f0;
+            border: none;
+            padding: 5px 10px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .bottom-button:hover {
+            background-color: #444;
+        }
+
+        /* Пиксель-арт эффект (Hotline Miami style) */
+        .pixelated {
+            image-rendering: pixelated;
+        }
+
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>POOL 🏊‍♂️ - Розыгрыши USDT</h1>
-        <p>Собираем пул, разыгрываем 90% победителю, 10% комиссии!</p>
+    <!-- Верхняя панель -->
+    <div class="top-panel">
+        <input type="text" class="title-input" value="Бассейн / POOL" readonly>
+        <input type="text" class="price-input" value="0.00 USDT" readonly>
+        <button class="contribute-button">Внести в пул</button>
+        <input type="text" class="search-input" placeholder="Поиск...">
     </div>
-    <div class="container">
-        <h2>Активные пулы</h2>
-        <div class="pool-card">
-            <h3>Пул #1</h3>
-            <p class="timer">До конца: 14:30</p>
-            <p>Участников: 25</p>
-            <p>Банк: 3.75 USDT</p>
-        </div>
-        <h2>Завершающиеся</h2>
-        <div class="pool-card">
-            <h3>Пул #2</h3>
-            <p class="timer">До конца: 2:15</p>
-            <p>Участников: 12</p>
-            <p>Банк: 1.80 USDT</p>
-        </div>
-        <h2>История</h2>
-        <div class="pool-card">
-            <h3>Пул #3 (завершён)</h3>
-            <p>Победитель: ID 123</p>
-            <p>Выплата: 4.50 USDT</p>
-        </div>
-    </div>
-    <script>
-        let timeLeft1 = 870;  // 14:30 в сек
-        let timeLeft2 = 135;  // 2:15 в сек
-        setInterval(() => {
-            let min1 = Math.floor(timeLeft1 / 60);
-            let sec1 = timeLeft1 % 60;
-            document.querySelectorAll('.timer')[0].innerText = `До конца: ${min1}:${sec1.toString().padStart(2, '0')}`;
-            timeLeft1--;
-            if (timeLeft1 <= 0) timeLeft1 = 870;
 
-            let min2 = Math.floor(timeLeft2 / 60);
-            let sec2 = timeLeft2 % 60;
-            document.querySelectorAll('.timer')[1].innerText = `До конца: ${min2}:${sec2.toString().padStart(2, '0')}`;
-            timeLeft2--;
-            if (timeLeft2 <= 0) timeLeft2 = 135;
+    <!-- Таймер в правом углу -->
+    <div class="timer" id="timer">00:15:00</div>
+
+    <!-- Боковое меню слева -->
+    <div class="side-menu">
+        <div class="menu-icon" title="Розыгрыш">🔨</div>  <!-- Молоток - розыгрыш -->
+        <div class="menu-icon" title="Настройки">⚙️</div>  <!-- Шестерёнка - настройки -->
+        <div class="menu-icon" title="Статистика">📊</div>  <!-- Круговая диаграмма - статистика -->
+        <div class="menu-icon" title="История">📜</div>  # List - история
+        <div class="menu-icon" title="Помощь">?</div>  # Знак вопроса - помощь
+    </div>
+
+    <!-- Таблица участников -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Место</th>
+                    <th>Никнейм</th>
+                    <th>USDT</th>
+                    <th>% Победы</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>User1</td>
+                    <td>5.00 USDT</td>
+                    <td>50% <span class="icon">📈</span></td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>User2</td>
+                    <td>3.00 USDT</td>
+                    <td>30% <span class="icon">📈</span></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>User3</td>
+                    <td>2.00 USDT</td>
+                    <td>20% <span class="icon">📈</span></td>
+                </tr>
+                <!-- Добавить больше строк по мере необходимости -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Нижняя панель -->
+    <div class="bottom-panel">
+        <div class="bottom-icons">
+            <span class="bottom-icon" title="Баланс">$</span>  # Доллар - баланс
+            <span class="bottom-icon" title="Скачать">↓</span>  # Скачать - экспорт
+            <span class="bottom-icon" title="Архив">📂</span>  # Папка - архив
+            <span class="bottom-icon" title="Репорт бага">🐞</span>  # Баг - репорт
+            <span class="bottom-icon" title="Очистить">🗑️</span>  # Корзина - очистить
+        </div>
+        <div class="bottom-buttons">
+            <button class="bottom-button">Правила</button>
+            <button class="bottom-button">%</button>
+            <button class="bottom-button">←</button>
+            <button class="bottom-button">→</button>
+        </div>
+    </div>
+
+    <script>
+        // Таймер
+        let timeLeft = 900;  # 15 мин в сек
+        setInterval(() => {
+            let min = Math.floor(timeLeft / 60);
+            let sec = timeLeft % 60;
+            document.getElementById('timer').innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            timeLeft--;
+            if (timeLeft <= 0) timeLeft = 900;
         }, 1000);
+
+        // Пиксель-арт эффект (Hotline Miami style)
+        document.body.classList.add('pixelated');
     </script>
 </body>
 </html>
