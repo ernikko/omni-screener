@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>POOL 🏊‍♂️</title>
+    <style>
+        body { font-family: Arial; text-align: center; background: #1e90ff; color: white; }
+        .pool { font-size: 24px; margin: 20px; }
+        .slot { font-size: 50px; margin: 20px; }
+        button { padding: 10px 20px; background: #ffd700; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="pool">POOL: 0 USDT 💰</div>
+    <div class="slot" id="slot">🎰</div>
+    <button onclick="Telegram.WebApp.close()">Вступить 🏊‍♂️</button>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        let symbols = ['💰', '🏊‍♂️', '🌊'];
+        setInterval(() => {
+            document.getElementById('slot').innerText = symbols[Math.floor(Math.random() * 3)];
+        }, 100);
+    </script>
+</body>
+</html>
