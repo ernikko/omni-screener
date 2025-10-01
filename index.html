@@ -6,21 +6,25 @@
     <title>Бассейн / POOL</title>
     <style>
         body {
-            background-color: #1a1a1a; /* Тёмный фон в стиле 90-х */
-            color: #f0f0f0; /* Светлый текст */
-            font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт */
+            background-color: #1a1a1a; /* Тёмный фон */
+            color: #00ffcc; /* Неоновый голубой */
+            font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт 90-х */
             margin: 0;
             padding: 0;
-            width: 320px; /* Ширина для компактного Mini App */
-            height: 500px; /* Ограниченная высота для прокрутки */
+            width: 320px; /* Ширина для Mini App */
+            height: 500px; /* Высота для прокрутки */
             overflow-x: hidden;
             overflow-y: auto; /* Вертикальная прокрутка */
+            background-image: 
+                linear-gradient(rgba(0,255,204,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,204,0.1) 1px, transparent 1px);
+            background-size: 20px 20px; /* Сетка неона */
         }
 
         /* Неон-эффект */
         .neon {
-            text-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc, 0 0 15px #00ffcc;
-            color: #fff;
+            text-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc, 0 0 15px #00ffcc, 0 0 20px #00ffcc;
+            color: #00ffcc;
         }
 
         /* Верхняя панель */
@@ -32,17 +36,16 @@
         }
 
         .title {
-            font-size: 1.2em;
+            font-size: 1em;
             margin: 0;
-            color: #00ffcc;
         }
 
         .total-pool {
             background-color: #333;
-            border: none;
+            border: 1px solid #00ffcc;
             color: #00ffcc;
             padding: 5px;
-            font-size: 1em;
+            font-size: 0.9em;
             border-radius: 3px;
             width: 100px;
             margin-top: 5px;
@@ -56,7 +59,7 @@
             padding: 8px 15px;
             border-radius: 3px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 0.8em;
             margin-top: 5px;
         }
 
@@ -67,12 +70,14 @@
         /* Таймер */
         .timer {
             background-color: #000;
+            border: 1px solid #00ffcc;
             color: #00ffcc;
             padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 10px 0;
+            margin: 10px auto;
             border-radius: 3px;
+            max-width: 200px;
         }
 
         /* Таблица участников */
@@ -84,6 +89,7 @@
             width: 100%;
             border-collapse: collapse;
             background-color: #2a2a2a;
+            border: 1px solid #00ffcc;
             border-radius: 3px;
         }
 
@@ -91,17 +97,19 @@
             padding: 5px;
             text-align: left;
             border-bottom: 1px solid #00ffcc;
-            font-size: 0.8em;
+            font-size: 0.7em;
         }
 
         th {
             background-color: #333;
+            color: #00ffcc;
         }
 
         .icon {
             margin-left: 5px;
-            color: #00ffcc;
+            color: #ff00ff; /* Неон-розовый для акцентов */
         }
+
     </style>
     <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
 </head>
