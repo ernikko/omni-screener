@@ -6,9 +6,9 @@
     <title>Бассейн / POOL</title>
     <style>
         body {
-            background-color: #1a1a1a; /* Тёмный фон */
-            color: #00ffcc; /* Неоновый голубой */
-            font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт 90-х */
+            background-color: #1c2526; /* Тёмный фон с мягким оттенком */
+            color: #a9d6df; /* Мягкий голубой для читаемости */
+            font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт */
             margin: 0;
             padding: 0;
             width: 320px; /* Ширина для Mini App */
@@ -16,23 +16,24 @@
             overflow-x: hidden;
             overflow-y: auto; /* Вертикальная прокрутка */
             background-image: 
-                linear-gradient(rgba(0,255,204,0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,255,204,0.1) 1px, transparent 1px);
-            background-size: 20px 20px; /* Сетка неона */
+                linear-gradient(rgba(169, 214, 223, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(169, 214, 223, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px; /* Лёгкая сетка */
         }
 
-        /* Неон-эффект */
+        /* Неон-эффект (мягкий) */
         .neon {
-            text-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc, 0 0 15px #00ffcc, 0 0 20px #00ffcc;
-            color: #00ffcc;
+            text-shadow: 0 0 3px #a9d6df, 0 0 6px #a9d6df;
+            color: #a9d6df;
         }
 
         /* Верхняя панель */
         .top-panel {
-            background-color: #2a2a2a;
+            background-color: #2c383a;
             padding: 10px;
             text-align: center;
-            border-bottom: 1px solid #00ffcc;
+            border-bottom: 1px solid #a9d6df;
+            width: 100%;
         }
 
         .title {
@@ -41,75 +42,78 @@
         }
 
         .total-pool {
-            background-color: #333;
-            border: 1px solid #00ffcc;
-            color: #00ffcc;
+            background-color: #34444a;
+            border: 1px solid #a9d6df;
+            color: #a9d6df;
             padding: 5px;
             font-size: 0.9em;
             border-radius: 3px;
             width: 100px;
             margin-top: 5px;
             text-align: center;
+            display: inline-block;
         }
 
         .contribute-button {
-            background-color: #00ffcc;
+            background-color: #a9d6df;
             border: none;
-            color: #1a1a1a;
+            color: #1c2526;
             padding: 8px 15px;
             border-radius: 3px;
             cursor: pointer;
             font-size: 0.8em;
             margin-top: 5px;
+            display: inline-block;
         }
 
         .contribute-button:hover {
-            background-color: #00b386;
+            background-color: #87b3bd;
         }
 
         /* Таймер */
         .timer {
-            background-color: #000;
-            border: 1px solid #00ffcc;
-            color: #00ffcc;
+            background-color: #2c383a;
+            border: 1px solid #a9d6df;
+            color: #a9d6df;
             padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 10px auto;
+            margin: 10px 0;
             border-radius: 3px;
-            max-width: 200px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         /* Таблица участников */
         .table-container {
             margin: 10px;
+            width: 100%;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background-color: #2a2a2a;
-            border: 1px solid #00ffcc;
+            background-color: #2c383a;
+            border: 1px solid #a9d6df;
             border-radius: 3px;
         }
 
         th, td {
             padding: 5px;
             text-align: left;
-            border-bottom: 1px solid #00ffcc;
+            border-bottom: 1px solid #a9d6df;
             font-size: 0.7em;
         }
 
         th {
-            background-color: #333;
-            color: #00ffcc;
+            background-color: #34444a;
+            color: #a9d6df;
         }
 
         .icon {
             margin-left: 5px;
-            color: #ff00ff; /* Неон-розовый для акцентов */
+            color: #d4a9e2; /* Мягкий пурпурный акцент */
         }
-
     </style>
     <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
 </head>
@@ -178,9 +182,8 @@
             // Пример: данные из Google Sheets (заменить на реальный API)
             let participants = []; // Здесь будут реальные данные от бота
 
-            // Получение данных (заглушка, пока нет API)
-            // В будущем: fetch от WEBHOOK_URL
-            if (Math.random() > 0.5) { // Симуляция первого вклада
+            // Симуляция первого вклада
+            if (Math.random() > 0.5) {
                 participants = [
                     { id: "User1", amount: 0.20, weight: 50 },
                     { id: "User2", amount: 0.10, weight: 30 }
