@@ -134,7 +134,7 @@
     .participant-amount{ color:#ffff66; font-weight:700; }
     .participant-chance{ color:var(--neon-cyan); font-size:0.75rem; opacity:0.95; }
 
-    /* ========== Рулетка ========== */
+    /* ========== Рулетка (Исправлены стили для центрирования) ========== */
     .roulette{
       background: rgba(0,0,0,0.6);
       border-radius:8px;
@@ -145,7 +145,22 @@
       box-shadow: 0 0 18px rgba(169,230,230,0.03);
     }
     .roulette-value{ color:var(--neon-cyan); margin-bottom:8px; display:block; }
-    .roulette-diagram{ width:200px; height:200px; margin: 0 auto; border-radius:50%; overflow:hidden; }
+    .roulette-diagram{
+      /* width:200px; height:200px; <-- Убрано */
+      width: min(200px, 90vw); /* Делаем адаптивным, макс 200px или 90% экрана */
+      height: 0;
+      padding-bottom: min(200px, 90vw); /* Чтобы контейнер оставался квадратным */
+      margin: 0 auto;
+      border-radius:50%;
+      overflow:hidden;
+      position:relative; /* Для позиционирования canvas */
+    }
+    #roulette-canvas {
+        position:absolute;
+        top:0; bottom:0; left:0; right:0;
+        width:100%;
+        height:100%;
+    }
 
     /* ========== МОДАЛ ФАЛЬБЭК (копирование адреса) ========== */
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:9999; }
@@ -160,7 +175,7 @@
     /* Адаптив (очень узкие экраны) */
     @media (max-width:340px){
       .container{ padding:12px; }
-      .roulette-diagram{ width:160px; height:160px; }
+      /* ЭТОТ БЛОК УЖЕ НЕ ТРЕБУЕТ ИЗМЕНЕНИЙ, Т.К. ОСНОВНОЙ СТИЛЬ АДАПТИВНЫЙ */
       .contribute-button{ padding:8px 10px; font-size:0.72rem; }
       .total-pool{ font-size:0.72rem; }
     }
@@ -189,7 +204,6 @@
     </div>
   </div>
 
-  <!-- Модал fallback -->
   <div id="modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal">
       <h4>Перейти в кошелёк</h4>
@@ -205,7 +219,7 @@
 
   <script>
     /***********************
-     *  ДАННЫЕ / СТЕЙТ
+     * ДАННЫЕ / СТЕЙТ
      ***********************/
     // На проде participantsData берём с сервера через webhook; здесь — пример.
     let participantsData = [
@@ -219,7 +233,7 @@
     const MIN_AMOUNT = 0.15; // USDT
 
     /***********************
-     *  UI ЭЛЕМЕНТЫ
+     * UI ЭЛЕМЕНТЫ
      ***********************/
     const totalInput = document.getElementById('total-pool');
     const participantsList = document.getElementById('participants-list');
@@ -235,8 +249,10 @@
     const closeModal = document.getElementById('closeModal');
 
     /***********************
-     *  КНОПКА ВНЕСТИ ПУЛ
+     * КНОПКА ВНЕСТИ ПУЛ (Исправлена логика вызова)
      ***********************/
+    // ВНИМАНИЕ: Если вы принимаете USDT, а не TON, этот deeplink может быть некорректным.
+    // Его нужно заменить на deeplink для перевода USDT Jetton.
     const YOUR_ADDRESS = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
 
     function showFallbackModal(address, tonLink){
@@ -254,31 +270,31 @@
     }
 
     function contribute(){
-      // соберём deeplink — для TON используется форма ton://transfer/<address>?amount=<nanoton>
-      const amountNano = Math.round(MIN_AMOUNT * 1e9);
+      // соберём deeplink (в вашем боте 0.15 USDT приравнено к 150000000 нанотонов)
+      const amountNano = 150000000;
       const tonLink = `ton://transfer/${YOUR_ADDRESS}?amount=${amountNano}`;
+      console.log('Attempting to open link:', tonLink); // Добавим лог для отладки
 
-      // 1) если Telegram.WebApp доступен — просим его открыть ссылку (openTelegramLink обычно работает)
+      // 1) ИСПОЛЬЗУЕМ openLink, который более надежен для deeplink'ов в Mini App
       try {
-        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openTelegramLink === 'function') {
-          Telegram.WebApp.openTelegramLink(tonLink);
-          // fallback: если через 700ms ничего не произошло — показываем модал с адресом
-          setTimeout(()=> showFallbackModal(YOUR_ADDRESS, tonLink), 900);
+        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === 'function') {
+          Telegram.WebApp.openLink(tonLink);
+          // fallback: если через 1000ms ничего не произошло — показываем модал с адресом
+          setTimeout(()=> showFallbackModal(YOUR_ADDRESS, tonLink), 1000);
           return;
         }
       } catch(e){
-        // ignore
+        console.error('Error in openLink attempt:', e);
       }
 
       // 2) попытка открыть через window.open (будет работать в некоторых кошельках/браузерах)
       try {
         const newWindow = window.open(tonLink, '_blank');
         if (newWindow) {
-          // открылось — всё ок (в мобильных браузерах часто срабатывает)
           return;
         }
       } catch(e){
-        // ignore
+        console.error('Error in window.open attempt:', e);
       }
 
       // 3) если ничего из выше не сработало — показываем модал с инструкцией и адресом
@@ -288,7 +304,7 @@
     contributeBtn.addEventListener('click', contribute);
 
     /***********************
-     *  ТАЙМЕР
+     * ТАЙМЕР
      ***********************/
     function updateTimer(){
       const el = document.getElementById('timer');
@@ -309,8 +325,8 @@
     }
 
     /***********************
-     *  ОБНОВЛЕНИЕ УЧАСТНИКОВ
-     *  (на проде — получать данные с сервера)
+     * ОБНОВЛЕНИЕ УЧАСТНИКОВ
+     * (на проде — получать данные с сервера)
      ***********************/
     function setParticipantsFromServer(dataArray){
       // ожидаем массив {id, amount}
@@ -368,7 +384,7 @@
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     /***********************
-     *  РИСОВАНИЕ РУЛЕТКИ (canvas)
+     * РИСОВАНИЕ РУЛЕТКИ (canvas)
      ***********************/
     function resizeCanvasForHiDPI(c){
       const dpr = window.devicePixelRatio || 1;
@@ -442,7 +458,7 @@
     }
 
     /***********************
-     *  ЦИКЛ ОБНОВЛЕНИЯ
+     * ЦИКЛ ОБНОВЛЕНИЯ
      ***********************/
     // На проде вместо этой функции делай fetch к твоему webhook, который отдаёт
     // {totalPool, participants: [{id, amount}], timeLeft}
