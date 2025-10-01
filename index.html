@@ -259,7 +259,7 @@
     const closeModal = document.getElementById('closeModal');
 
     /***********************
-     * КНОПКА ВНЕСТИ ПУЛ (ИСПРАВЛЕННАЯ ЛОГИКА)
+     * КНОПКА ВНЕСТИ ПУЛ (ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ)
      ***********************/
     function showFallbackModal(address, tonLink){
       addrBox.textContent = address;
@@ -268,41 +268,21 @@
         try { await navigator.clipboard.writeText(address); copyBtn.textContent = "СКОПИРОВАНО"; setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); }
         catch(e){ copyBtn.textContent="ОШИБКА"; setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); }
       };
-      openBtn.onclick = () => { window.open(tonLink, '_blank'); };
+      openBtn.onclick = () => { 
+        // Если кнопка "Открыть ссылку" в модале тоже вызывает вылет, 
+        // это уже проблема Telegram/устройства, но это последний шанс открыть.
+        window.open(tonLink, '_blank'); 
+      };
       closeModal.onclick = () => modalBackdrop.style.display = 'none';
     }
 
     function contribute(){
-      // Минимальная сумма 0.15 USDT в nano-TON (150 миллионов)
       const amountNano = 150000000;
-      // Deeplink для кошелька TON
       const tonLink = `ton://transfer/${YOUR_ADDRESS}?amount=${amountNano}`;
       
-      let linkOpened = false;
-
-      // 1. Попытка через Telegram WebApp openLink (самый надежный способ)
-      if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === 'function') {
-        try {
-          Telegram.WebApp.openLink(tonLink); 
-          linkOpened = true; 
-        } catch(e) {
-          console.error('Telegram.WebApp.openLink failed:', e);
-        }
-      }
-
-      // 2. Если openLink не сработал или недоступен (например, в браузере или на десктопе)
-      if (!linkOpened) {
-          const newWindow = window.open(tonLink, '_blank');
-          if (newWindow) {
-              linkOpened = true;
-          }
-      }
-
-      // 3. Финальный Fallback: если ничего не сработало, показываем модал
-      // Эта логика предотвращает вылет приложения в 99% случаев
-      if (!linkOpened) {
-          showFallbackModal(YOUR_ADDRESS, tonLink);
-      }
+      // ИСПРАВЛЕНИЕ: Мы не вызываем Telegram.WebApp.openLink() напрямую, 
+      // чтобы избежать вылета. Сразу показываем модал.
+      showFallbackModal(YOUR_ADDRESS, tonLink);
     }
 
     contributeBtn.addEventListener('click', contribute);
@@ -331,7 +311,7 @@
      * ОБНОВЛЕНИЕ УЧАСТНИКОВ (МОК-ДАННЫЕ, ЗАМЕНИТЬ НА FETCH)
      ***********************/
     function setParticipantsFromServer(dataArray, newTimeLeft, newPoolStart){
-      // ... здесь должна быть ваша логика обновления данных с сервера
+      // Здесь должна быть ваша логика обновления данных с сервера
     }
     
     // Вспомогательная функция для безопасности
