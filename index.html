@@ -1,38 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>POOL 🏊‍♂️</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POOL 🏊‍♂️ - Розыгрыши USDT</title>
     <style>
-        body { font-family: Arial; text-align: center; background: linear-gradient(#1e90ff, #00b7eb); color: white; }
-        .pool { font-size: 28px; margin: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .slot { font-size: 60px; margin: 30px; animation: spin 0.5s linear infinite; }
+        body { font-family: 'Arial', sans-serif; background: #f0f8ff; color: #333; margin: 0; padding: 0; }
+        .header { background: #007bff; color: white; padding: 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 2em; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .carousel { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .pool-card { background: #e3f2fd; border: 1px solid #007bff; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .timer { font-size: 1.5em; color: #dc3545; font-weight: bold; }
+        .participants { font-size: 1.2em; color: #28a745; }
+        .wallet-connect { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px; }
+        .categories { display: flex; justify-content: space-around; margin: 20px 0; }
+        .category { background: white; border: 1px solid #ddd; border-radius: 5px; padding: 10px; text-align: center; cursor: pointer; }
+        .category.active { background: #007bff; color: white; }
+        .pools-list { display: none; }
+        .pools-list.active { display: block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { padding: 12px 24px; background: #ffd700; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; }
-        button:hover { background: #ffca28; }
-        .timer { font-size: 20px; margin: 10px; }
+        .slot { font-size: 50px; animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
-    <div class="pool">POOL: 0 USDT 💰</div>
-    <div class="slot" id="slot">🎰</div>
-    <div class="timer" id="timer">До розыгрыша: 15:00</div>
-    <button onclick="Telegram.WebApp.close()">Вступить 🏊‍♂️</button>
+    <div class="header">
+        <h1>POOL 🏊‍♂️ - Розыгрыши USDT</h1>
+        <p>Собираем пул, разыгрываем 90% победителю, 10% комиссии!</p>
+    </div>
+    <div class="container">
+        <div class="carousel">
+            <h2>Активные пулы</h2>
+            <div class="pool-card">
+                <h3>Пул #1</h3>
+                <p class="timer">До конца: 14:30</p>
+                <p class="participants">Участников: 25</p>
+                <p>Банк: 3.75 USDT</p>
+                <button class="wallet-connect" onclick="connectWallet()">Подключить кошелёк</button>
+            </div>
+        </div>
+        <div class="categories">
+            <div class="category active" onclick="showCategory('active')">Активные пулы</div>
+            <div class="category" onclick="showCategory('ending')">Завершающиеся</div>
+            <div class="category" onclick="showCategory('history')">История</div>
+        </div>
+        <div id="active" class="pools-list active">
+            <div class="pool-card">
+                <h3>Пул #1</h3>
+                <p>До конца: 14:30</p>
+                <p>Участников: 25</p>
+                <p>Банк: 3.75 USDT</p>
+                <button class="wallet-connect" onclick="connectWallet()">Вступить</button>
+            </div>
+        </div>
+        <div id="ending" class="pools-list">
+            <div class="pool-card">
+                <h3>Пул #2</h3>
+                <p>До конца: 2:15</p>
+                <p>Участников: 12</p>
+                <p>Банк: 1.80 USDT</p>
+            </div>
+        </div>
+        <div id="history" class="pools-list">
+            <div class="pool-card">
+                <h3>Пул #3 (завершён)</h3>
+                <p>Победитель: ID 123</p>
+                <p>Выплата: 4.50 USDT</p>
+            </div>
+        </div>
+    </div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
-        let symbols = ['💰', '🏊‍♂️', '🌊', '🎉'];
-        setInterval(() => {
-            document.getElementById('slot').innerText = symbols[Math.floor(Math.random() * 4)];
-        }, 100);
-        // Таймер
-        let timeLeft = 900;  // 15 мин в сек
+        function showCategory(category) {
+            document.querySelectorAll('.pools-list').forEach(el => el.classList.remove('active'));
+            document.getElementById(category).classList.add('active');
+            document.querySelectorAll('.category').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        function connectWallet() {
+            alert("Подключение кошелька (заглушка). Используй TON Connect для USDT.");
+        }
+        // Таймер (пример для пула #1)
+        let timeLeft = 870;  // 14:30 в сек
         setInterval(() => {
             let min = Math.floor(timeLeft / 60);
             let sec = timeLeft % 60;
-            document.getElementById('timer').innerText = `До розыгрыша: ${min}:${sec.toString().padStart(2, '0')}`;
+            document.querySelector('.timer').innerText = `До конца: ${min}:${sec.toString().padStart(2, '0')}`;
             timeLeft--;
-            if (timeLeft <= 0) timeLeft = 900;
+            if (timeLeft <= 0) timeLeft = 870;
         }, 1000);
     </script>
 </body>
