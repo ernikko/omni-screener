@@ -3,145 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POOL / Бассейн</title>
+    <title>Бассейн / POOL</title>
     <style>
         body {
-            background-color: #0a0a0a; /* Глубокий чёрный фон */
-            color: #a9e6e6; /* Бирюзовый неон как базовый цвет */
-            font-family: 'Press Start 2P', monospace;
+            background-color: #1c2526; /* Тёмный фон 90-х */
+            color: #a9d6df; /* Мягкий голубой */
+            font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт */
             margin: 0;
             padding: 0;
             overflow-x: hidden;
             overflow-y: auto;
             background-image: 
-                linear-gradient(rgba(255, 105, 180, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
-            background-size: 30px 30px; /* Лёгкая текстура тумана */
+                linear-gradient(rgba(169, 214, 223, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(169, 214, 223, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
-        }
-
-        .container {
-            max-width: 320px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 20px 0;
+            justify-content: center; /* Центрирование контейнера */
+            align-items: flex-start; /* Выравнивание по верхнему краю */
         }
 
         .neon {
-            text-shadow: 0 0 10px #ff69b4, 0 0 20px #a9e6e6;
-            color: #ff69b4; /* Розово-фиолетовый неон */
+            text-shadow: 0 0 3px #a9d6df, 0 0 6px #a9d6df;
+            color: #a9d6df;
+        }
+
+        /* Контейнер для всего контента */
+        .container {
+            max-width: 320px; /* Фиксированная максимальная ширина */
+            width: 100%; /* Занимает доступное пространство до max-width */
+            margin: 0 auto; /* Равные отступы слева и справа */
+            padding: 0 20px; /* Внутренние отступы для элементов внутри контейнера */
         }
 
         /* Верхняя панель */
         .top-panel {
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 15px;
+            background-color: #2c383a;
+            padding: 10px;
             text-align: center;
-            border-bottom: 2px solid #a9e6e6;
-            display: inline-flex;
-            margin: 0 auto 20px;
-            gap: 15px;
-            justify-content: center;
-            align-items: center;
+            border-bottom: 1px solid #a9d6df;
+            display: inline-flex; /* Подстройка под содержимое */
+            margin: 20px 0; /* Вертикальные отступы */
+            gap: 10px; /* Расстояние между элементами */
+            justify-content: center; /* Выравнивание элементов по центру */
+            align-items: center; /* Вертикальное центрирование внутри панели */
         }
 
         .title {
-            font-size: 1.2em;
+            font-size: 1em;
             margin: 0;
-            text-transform: uppercase;
         }
 
         .total-pool {
-            background-color: #000;
-            border: 2px solid #00ff00; /* Зелёный цвет табло */
-            color: #00ff00;
-            padding: 8px;
+            background-color: #34444a;
+            border: 1px solid #a9d6df;
+            color: #a9d6df;
+            padding: 5px;
             font-size: 0.9em;
-            border-radius: 5px;
-            width: 120px;
+            border-radius: 3px;
+            width: 100px;
             text-align: center;
-            animation: flicker 1.5s infinite alternate;
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.9; }
-            50% { opacity: 1; }
-            100% { opacity: 0.9; }
         }
 
         .contribute-button {
-            background-color: #ff69b4;
-            border: 2px solid #a9e6e6;
-            color: #0a0a0a;
-            padding: 10px 20px;
-            font-size: 0.9em;
-            border-radius: 5px;
+            background-color: #a9d6df;
+            border: none;
+            color: #1c2526;
+            padding: 8px 15px;
+            border-radius: 3px;
             cursor: pointer;
-            text-transform: uppercase;
-            text-shadow: 0 0 5px #a9e6e6;
-            transition: transform 0.2s;
+            font-size: 0.8em;
         }
 
         .contribute-button:hover {
-            transform: scale(1.05);
-            background-color: #d1478e;
+            background-color: #87b3bd;
         }
 
         /* Таймер */
         .timer {
-            background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid #a9e6e6;
-            color: #a9e6e6;
-            padding: 10px;
+            background-color: #2c383a;
+            border: 1px solid #a9d6df;
+            color: #a9d6df;
+            padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 20px 0;
-            border-radius: 5px;
+            margin: 20px 0; /* Вертикальные отступы */
+            border-radius: 3px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Таблица участников */
+        .table-container {
+            margin: 20px 0; /* Вертикальные отступы */
             width: 100%;
         }
 
-        /* Список участников */
-        .participants {
-            margin: 20px 0;
+        table {
+            margin: 0 auto; /* Центрирование таблицы */
+            border-collapse: collapse;
+            background-color: #2c383a;
+            border: 1px solid #a9d6df;
+            border-radius: 3px;
+            width: 100%;
+            text-align: center; /* Выравнивание текста по центру */
         }
 
-        .participant-card {
-            background-color: #0a0a0a;
-            border: 2px solid #ff69b4;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        th, td {
+            padding: 5px;
+            border-bottom: 1px solid #a9d6df;
+            font-size: 0.7em;
         }
 
-        .participant-nick {
-            color: #a9e6e6;
-            font-size: 0.8em;
+        th {
+            background-color: #34444a;
+            color: #a9d6df;
         }
 
-        .participant-amount {
-            color: #ffff00; /* Жёлтый акцент от ламп */
-            font-size: 0.8em;
-        }
-
-        /* Шансы на победу */
-        .roulette {
-            background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid #ff69b4;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-            text-align: center;
-        }
-
-        .roulette-value {
-            color: #a9e6e6;
-            font-size: 0.9em;
-            text-shadow: 0 0 5px #a9e6e6;
+        .icon {
+            margin-left: 5px;
+            color: #d4a9e2; /* Мягкий пурпурный */
         }
     </style>
     <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
@@ -150,29 +130,29 @@
     <div class="container">
         <!-- Верхняя панель -->
         <div class="top-panel">
-            <h2 class="title neon">POOL / Бассейн</h2>
+            <h2 class="title neon">Бассейн / POOL</h2>
             <input type="text" class="total-pool" id="total-pool" value="0.00 USDT" readonly>
-            <button class="contribute-button" onclick="contribute()">Внести пул</button>
+            <button class="contribute-button" onclick="contribute()">Внести в пул</button>
         </div>
 
         <!-- Таймер -->
         <div class="timer" id="timer">Ожидание старта</div>
 
-        <!-- Список участников -->
-        <div class="participants" id="participants-list">
-            <div class="participant-card">
-                <span class="participant-nick">User1</span>
-                <span class="participant-amount">0.20 USDT</span>
-            </div>
-            <div class="participant-card">
-                <span class="participant-nick">User2</span>
-                <span class="participant-amount">0.10 USDT</span>
-            </div>
-        </div>
-
-        <!-- Шансы на победу -->
-        <div class="roulette">
-            <span class="roulette-value">Шанс: 50%</span>
+        <!-- Таблица участников -->
+        <div class="table-container">
+            <table id="participants-table">
+                <thead>
+                    <tr>
+                        <th>Место</th>
+                        <th>Ник</th>
+                        <th>USDT</th>
+                        <th>% Победы</th>
+                    </tr>
+                </thead>
+                <tbody id="participants-body">
+                    <!-- Данные заполняются динамически -->
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -190,7 +170,7 @@
                 if (timeLeft <= 0) {
                     poolStarted = false;
                     timeLeft = 900;
-                    updateParticipants();
+                    updateTable();
                 }
             } else {
                 document.getElementById('timer').innerText = "Ожидание старта";
@@ -205,44 +185,48 @@
             Telegram.WebApp.openTelegramLink(tonLink); // Открывает в Telegram
         }
 
-        // Обновление участников
-        function updateParticipants() {
-            const participantsList = document.getElementById('participants-list');
-            participantsList.innerHTML = '';
+        // Обновление таблицы с реальными данными (заглушка, будет заменена на API)
+        function updateTable() {
+            const tbody = document.getElementById('participants-body');
+            tbody.innerHTML = '';
 
+            // Пример: данные из Google Sheets
             let participants = [];
+
             if (Math.random() > 0.5) {
                 participants = [
-                    { id: "User1", amount: 0.20 },
-                    { id: "User2", amount: 0.10 }
+                    { id: "User1", amount: 0.20, weight: 50 },
+                    { id: "User2", amount: 0.10, weight: 30 }
                 ];
                 if (!poolStarted && participants[0].amount >= 0.15) {
                     poolStarted = true;
                 }
             }
 
+            if (!poolStarted && participants.length === 0) {
+                document.getElementById('total-pool').value = "0.00 USDT";
+                return;
+            }
+
+            participants.sort((a, b) => b.amount - a.amount);
             const totalPool = participants.reduce((sum, p) => sum + p.amount, 0);
             document.getElementById('total-pool').value = `${totalPool.toFixed(2)} USDT`;
 
-            participants.forEach(participant => {
-                const card = document.createElement('div');
-                card.className = 'participant-card';
-                card.innerHTML = `
-                    <span class="participant-nick">${participant.id}</span>
-                    <span class="participant-amount">${participant.amount.toFixed(2)} USDT</span>
+            participants.forEach((participant, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${participant.id}</td>
+                    <td>${participant.amount.toFixed(2)} USDT</td>
+                    <td>${participant.weight.toFixed(1)}% <span class="icon">📈</span></td>
                 `;
-                participantsList.appendChild(card);
+                tbody.appendChild(row);
             });
-
-            if (participants.length > 0) {
-                const chance = (participants[0].amount / totalPool * 100).toFixed(1);
-                document.querySelector('.roulette-value').textContent = `Шанс: ${chance}%`;
-            }
         }
 
         setInterval(() => {
             updateTimer();
-            updateParticipants();
+            updateTable();
         }, 1000);
 
         if (window.Telegram && window.Telegram.WebApp) {
