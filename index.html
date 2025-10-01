@@ -2,91 +2,96 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Бассейн / POOL</title>
     <style>
         body {
-            background-color: #121212; /* Тёмно-серый фон */
-            color: #f0f0f0; /* Светло-белый текст */
-            font-family: 'Courier New', monospace; /* Ретро-шрифт */
+            background-color: #1a1a1a; /* Тёмный фон в стиле 90-х */
+            color: #f0f0f0; /* Светлый текст */
+            font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт */
             margin: 0;
             padding: 0;
+            width: 320px; /* Ширина для компактного Mini App */
+            height: 500px; /* Ограниченная высота для прокрутки */
             overflow-x: hidden;
+            overflow-y: auto; /* Вертикальная прокрутка */
         }
 
         /* Неон-эффект */
-        .neon-text {
-            text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+        .neon {
+            text-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc, 0 0 15px #00ffcc;
             color: #fff;
         }
 
         /* Верхняя панель */
         .top-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #1e1e1e;
-            padding: 15px;
-            border-bottom: 1px solid #333;
-        }
-
-        .title-input {
-            background-color: #333;
-            border: none;
-            color: #f0f0f0;
+            background-color: #2a2a2a;
             padding: 10px;
-            font-size: 1.2em;
-            border-radius: 5px;
-            flex-grow: 1;
-            margin-right: 10px;
             text-align: center;
+            border-bottom: 1px solid #00ffcc;
         }
 
-        .price-input {
+        .title {
+            font-size: 1.2em;
+            margin: 0;
+            color: #00ffcc;
+        }
+
+        .total-pool {
             background-color: #333;
             border: none;
-            color: #f0f0f0;
-            padding: 10px;
-            font-size: 1.2em;
-            border-radius: 5px;
-            width: 150px;
+            color: #00ffcc;
+            padding: 5px;
+            font-size: 1em;
+            border-radius: 3px;
+            width: 100px;
+            margin-top: 5px;
             text-align: center;
         }
 
         .contribute-button {
-            background-color: #007bff;
+            background-color: #00ffcc;
             border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
+            color: #1a1a1a;
+            padding: 8px 15px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.9em;
+            margin-top: 5px;
         }
 
         .contribute-button:hover {
-            background-color: #0056b3;
+            background-color: #00b386;
+        }
+
+        /* Таймер */
+        .timer {
+            background-color: #000;
+            color: #00ffcc;
+            padding: 5px;
+            font-size: 1em;
+            text-align: center;
+            margin: 10px 0;
+            border-radius: 3px;
         }
 
         /* Таблица участников */
         .table-container {
-            margin: 20px;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background-color: #1e1e1e;
-            border-radius: 5px;
-            overflow: hidden;
+            background-color: #2a2a2a;
+            border-radius: 3px;
         }
 
         th, td {
-            padding: 10px;
+            padding: 5px;
             text-align: left;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #00ffcc;
+            font-size: 0.8em;
         }
 
         th {
@@ -94,36 +99,22 @@
         }
 
         .icon {
-            margin-left: 10px;
-            font-size: 0.9em;
-            color: #ff00ff; /* Неон-розовый */
+            margin-left: 5px;
+            color: #00ffcc;
         }
-
-        /* Таймер */
-        .timer {
-            margin: 20px auto;
-            background-color: #000;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 1.5em;
-            text-align: center;
-            max-width: 200px;
-            box-shadow: 0 0 10px #ff00ff;
-        }
-
     </style>
+    <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
 </head>
 <body>
     <!-- Верхняя панель -->
     <div class="top-panel">
-        <input type="text" class="title-input" value="Бассейн / POOL" readonly>
-        <input type="text" class="price-input" id="total-pool" value="0.00 USDT" readonly>
-        <button class="contribute-button" onclick="contribute()">Внести в пул (0.15 USDT)</button>
+        <h2 class="title neon">Бассейн / POOL</h2>
+        <input type="text" class="total-pool" id="total-pool" value="0.00 USDT" readonly>
+        <button class="contribute-button" onclick="contribute()">Внести 0.15 USDT</button>
     </div>
 
     <!-- Таймер -->
-    <div class="timer" id="timer">15:00</div>
+    <div class="timer" id="timer">Ожидание старта</div>
 
     <!-- Таблица участников -->
     <div class="table-container">
@@ -131,7 +122,7 @@
             <thead>
                 <tr>
                     <th>Место</th>
-                    <th>Никнейм</th>
+                    <th>Ник</th>
                     <th>USDT</th>
                     <th>% Победы</th>
                 </tr>
@@ -143,7 +134,7 @@
     </div>
 
     <script>
-        // Таймер (реальный, синхронизируется с началом пула)
+        // Таймер
         let timeLeft = 900; // 15 минут в секундах
         let poolStarted = false;
 
@@ -156,7 +147,7 @@
                 if (timeLeft <= 0) {
                     poolStarted = false;
                     timeLeft = 900;
-                    updateTable(); // Сброс таблицы после окончания
+                    updateTable();
                 }
             } else {
                 document.getElementById('timer').innerText = "Ожидание старта";
@@ -165,40 +156,42 @@
 
         // Функция для вклада
         function contribute() {
-            const address = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC"; // Твой адрес из bot.py
+            const address = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
             const amount = 0.15 * 1e9; // 0.15 USDT в наноTON
             const tonLink = `ton://transfer/${address}?amount=${amount}`;
-            window.location.href = tonLink; // Открывает TON-ссылку
+            window.location.href = tonLink;
         }
 
-        // Обновление таблицы с реальными данными (заглушка, будет заменена на API позже)
+        // Обновление таблицы с реальными данными (заглушка, будет заменена на API)
         function updateTable() {
             const tbody = document.getElementById('participants-body');
-            tbody.innerHTML = ''; // Очищаем таблицу
+            tbody.innerHTML = '';
 
             // Пример: данные из Google Sheets (заменить на реальный API)
-            let participants = [
-                { id: "User1", amount: 5.00, weight: 50 },
-                { id: "User2", amount: 3.00, weight: 30 },
-                { id: "User3", amount: 2.00, weight: 20 }
-            ];
+            let participants = []; // Здесь будут реальные данные от бота
+
+            // Получение данных (заглушка, пока нет API)
+            // В будущем: fetch от WEBHOOK_URL
+            if (Math.random() > 0.5) { // Симуляция первого вклада
+                participants = [
+                    { id: "User1", amount: 0.20, weight: 50 },
+                    { id: "User2", amount: 0.10, weight: 30 }
+                ];
+                if (!poolStarted && participants[0].amount >= 0.15) {
+                    poolStarted = true;
+                }
+            }
 
             if (!poolStarted && participants.length === 0) {
                 document.getElementById('total-pool').value = "0.00 USDT";
                 return;
             }
 
-            // Сортировка по вкладу (реальные места)
+            // Сортировка по вкладу
             participants.sort((a, b) => b.amount - a.amount);
             const totalPool = participants.reduce((sum, p) => sum + p.amount, 0);
             document.getElementById('total-pool').value = `${totalPool.toFixed(2)} USDT`;
 
-            // Запуск пула при первом вкладе ≥ 0.15 USDT
-            if (!poolStarted && participants.length > 0 && participants[0].amount >= 0.15) {
-                poolStarted = true;
-            }
-
-            // Заполнение таблицы
             participants.forEach((participant, index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -216,6 +209,12 @@
             updateTimer();
             updateTable();
         }, 1000);
+
+        // Инициализация Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
     </script>
 </body>
 </html>
