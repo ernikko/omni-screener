@@ -3,24 +3,36 @@
 <head>
     <title>POOL 🏊‍♂️</title>
     <style>
-        body { font-family: Arial; text-align: center; background: #1e90ff; color: white; }
-        .pool { font-size: 24px; margin: 20px; }
-        .slot { font-size: 50px; margin: 20px; }
-        button { padding: 10px 20px; background: #ffd700; border: none; cursor: pointer; }
+        body { font-family: Arial; text-align: center; background: linear-gradient(#1e90ff, #00b7eb); color: white; }
+        .pool { font-size: 28px; margin: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .slot { font-size: 60px; margin: 30px; animation: spin 0.5s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { padding: 12px 24px; background: #ffd700; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; }
+        button:hover { background: #ffca28; }
+        .timer { font-size: 20px; margin: 10px; }
     </style>
 </head>
 <body>
     <div class="pool">POOL: 0 USDT 💰</div>
     <div class="slot" id="slot">🎰</div>
+    <div class="timer" id="timer">До розыгрыша: 15:00</div>
     <button onclick="Telegram.WebApp.close()">Вступить 🏊‍♂️</button>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
-        let symbols = ['💰', '🏊‍♂️', '🌊'];
+        let symbols = ['💰', '🏊‍♂️', '🌊', '🎉'];
         setInterval(() => {
-            document.getElementById('slot').innerText = symbols[Math.floor(Math.random() * 3)];
+            document.getElementById('slot').innerText = symbols[Math.floor(Math.random() * 4)];
         }, 100);
+        // Таймер (пример)
+        let timeLeft = 900;  // 15 мин в сек
+        setInterval(() => {
+            let min = Math.floor(timeLeft / 60);
+            let sec = timeLeft % 60;
+            document.getElementById('timer').innerText = `До розыгрыша: ${min}:${sec.toString().padStart(2, '0')}`;
+            timeLeft--;
+        }, 1000);
     </script>
 </body>
 </html>
