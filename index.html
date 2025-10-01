@@ -19,8 +19,6 @@
         .category.active { background: #007bff; color: white; }
         .pools-list { display: none; }
         .pools-list.active { display: block; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .slot { font-size: 50px; animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
@@ -82,7 +80,6 @@
         function connectWallet() {
             alert("Подключение кошелька (заглушка). Используй TON Connect для USDT.");
         }
-        // Таймер (пример для пула #1)
         let timeLeft = 870;  // 14:30 в сек
         setInterval(() => {
             let min = Math.floor(timeLeft / 60);
