@@ -19,6 +19,9 @@
                 linear-gradient(rgba(169, 214, 223, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(169, 214, 223, 0.05) 1px, transparent 1px);
             background-size: 20px 20px;
+            display: flex; /* Используем flexbox */
+            flex-direction: column;
+            align-items: center; /* Центрируем по горизонтали */
         }
 
         .neon {
@@ -26,13 +29,21 @@
             color: #a9d6df;
         }
 
+        /* Контейнер для элементов */
+        .container {
+            max-width: 280px; /* Ограничение ширины */
+            width: 100%;
+            margin: 0 auto; /* Центрирование */
+        }
+
         /* Верхняя панель */
         .top-panel {
             background-color: #2c383a;
-            padding: 10px 20px; /* Отступы слева/справа */
+            padding: 10px;
             text-align: center;
             border-bottom: 1px solid #a9d6df;
             width: 100%;
+            margin: 20px 0; /* Отступы сверху и снизу */
         }
 
         .title {
@@ -77,31 +88,30 @@
             padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 10px auto; /* Центрирование */
+            margin: 20px auto; /* Центрирование с отступами */
             border-radius: 3px;
-            max-width: 280px; /* Пространство по бокам */
-            box-sizing: border-box;
             width: 100%;
+            box-sizing: border-box;
         }
 
         /* Таблица участников */
         .table-container {
-            margin: 10px auto; /* Центрирование */
-            max-width: 280px; /* Пространство по бокам */
+            margin: 20px auto; /* Центрирование с отступами */
             width: 100%;
         }
 
         table {
-            width: 100%;
+            margin: 0 auto; /* Центрирование таблицы */
             border-collapse: collapse;
             background-color: #2c383a;
             border: 1px solid #a9d6df;
             border-radius: 3px;
+            width: 100%;
         }
 
         th, td {
             padding: 5px;
-            text-align: left;
+            text-align: center; /* Выравнивание текста по центру */
             border-bottom: 1px solid #a9d6df;
             font-size: 0.7em;
         }
@@ -119,31 +129,33 @@
     <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
 </head>
 <body>
-    <!-- Верхняя панель -->
-    <div class="top-panel">
-        <h2 class="title neon">Бассейн / POOL</h2>
-        <input type="text" class="total-pool" id="total-pool" value="0.00 USDT" readonly>
-        <button class="contribute-button" onclick="contribute()">Внести в пул</button>
-    </div>
+    <div class="container">
+        <!-- Верхняя панель -->
+        <div class="top-panel">
+            <h2 class="title neon">Бассейн / POOL</h2>
+            <input type="text" class="total-pool" id="total-pool" value="0.00 USDT" readonly>
+            <button class="contribute-button" onclick="contribute()">Внести в пул</button>
+        </div>
 
-    <!-- Таймер -->
-    <div class="timer" id="timer">Ожидание старта</div>
+        <!-- Таймер -->
+        <div class="timer" id="timer">Ожидание старта</div>
 
-    <!-- Таблица участников -->
-    <div class="table-container">
-        <table id="participants-table">
-            <thead>
-                <tr>
-                    <th>Место</th>
-                    <th>Ник</th>
-                    <th>USDT</th>
-                    <th>% Победы</th>
-                </tr>
-            </thead>
-            <tbody id="participants-body">
-                <!-- Данные заполняются динамически -->
-            </tbody>
-        </table>
+        <!-- Таблица участников -->
+        <div class="table-container">
+            <table id="participants-table">
+                <thead>
+                    <tr>
+                        <th>Место</th>
+                        <th>Ник</th>
+                        <th>USDT</th>
+                        <th>% Победы</th>
+                    </tr>
+                </thead>
+                <tbody id="participants-body">
+                    <!-- Данные заполняются динамически -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -172,7 +184,7 @@
             const address = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
             const amount = 0.15 * 1e9; // 0.15 USDT в наноTON
             const tonLink = `ton://transfer/${address}?amount=${amount}`;
-            Telegram.WebApp.openTelegramLink(tonLink); // Открывает в Telegram (Bitget/MetaMask)
+            Telegram.WebApp.openTelegramLink(tonLink); // Открывает в Telegram
         }
 
         // Обновление таблицы с реальными данными (заглушка, будет заменена на API)
@@ -180,10 +192,9 @@
             const tbody = document.getElementById('participants-body');
             tbody.innerHTML = '';
 
-            // Пример: данные из Google Sheets (заменить на реальный API)
-            let participants = []; // Здесь будут реальные данные от бота
+            // Пример: данные из Google Sheets
+            let participants = [];
 
-            // Симуляция первого вклада
             if (Math.random() > 0.5) {
                 participants = [
                     { id: "User1", amount: 0.20, weight: 50 },
@@ -199,7 +210,6 @@
                 return;
             }
 
-            // Сортировка по вкладу
             participants.sort((a, b) => b.amount - a.amount);
             const totalPool = participants.reduce((sum, p) => sum + p.amount, 0);
             document.getElementById('total-pool').value = `${totalPool.toFixed(2)} USDT`;
@@ -216,13 +226,11 @@
             });
         }
 
-        // Обновление каждую секунду
         setInterval(() => {
             updateTimer();
             updateTable();
         }, 1000);
 
-        // Инициализация Telegram Web App
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
