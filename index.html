@@ -41,8 +41,11 @@
             padding: 10px;
             text-align: center;
             border-bottom: 1px solid #a9d6df;
-            width: 100%;
-            margin: 20px 0; /* Вертикальные отступы */
+            display: inline-flex; /* Подстройка под содержимое */
+            margin: 20px auto; /* Центрирование с вертикальными отступами */
+            gap: 10px; /* Расстояние между элементами */
+            justify-content: center; /* Выравнивание элементов по центру */
+            align-items: center; /* Вертикальное центрирование внутри панели */
         }
 
         .title {
@@ -58,7 +61,7 @@
             font-size: 0.9em;
             border-radius: 3px;
             width: 100px;
-            margin-top: 5px;
+            margin: 0;
             text-align: center;
             display: inline-block;
         }
@@ -71,7 +74,7 @@
             border-radius: 3px;
             cursor: pointer;
             font-size: 0.8em;
-            margin-top: 5px;
+            margin: 0;
             display: inline-block;
         }
 
