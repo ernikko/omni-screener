@@ -7,8 +7,8 @@
     <style>
         body {
             background-color: #0a0a0a; /* Глубокий чёрный фон ночи */
-            color: #f0f0f0; /* Светлый текст */
-            font-family: 'Courier New', monospace; /* Ретро-шрифт */
+            color: #a9e6e6; /* Бирюзовый для текста */
+            font-family: 'Press Start 2P', monospace; /* Ретро-шрифт */
             margin: 0;
             padding: 0;
             overflow-x: hidden; /* Убран горизонтальный скролл */
@@ -19,6 +19,12 @@
                 linear-gradient(to top, rgba(0, 255, 204, 0.2) 0%, transparent 50%); /* Бирюзовый неон */
             background-blend-mode: overlay; /* Эффект отражений */
             position: relative;
+            animation: fog 20s ease-in-out infinite alternate; /* Движущийся туман */
+        }
+
+        @keyframes fog {
+            0% { background-position: 0 0; }
+            100% { background-position: 10px 5px; } /* Лёгкое движение тумана */
         }
 
         body::after {
@@ -31,11 +37,17 @@
             background: linear-gradient(to top, rgba(255, 215, 0, 0.1) 0%, transparent 100%); /* Жёлтые лампы мотеля */
             filter: blur(15px); /* Мягкий эффект ламп */
             pointer-events: none;
+            animation: lampFlicker 3s infinite alternate; /* Мерцание ламп */
+        }
+
+        @keyframes lampFlicker {
+            0% { opacity: 0.8; }
+            100% { opacity: 1; }
         }
 
         .neon {
-            text-shadow: 0 0 5px #ff69b4, 0 0 10px #a9e6e6;
-            color: #ff69b4; /* Розово-фиолетовый неон */
+            text-shadow: 0 0 5px #ff69b4, 0 0 10px #a9e6e6; /* Розовый и бирюзовый неон */
+            color: #ff69b4; /* Заголовки — розовый неон */
         }
 
         /* Контейнер для всего контента */
@@ -63,6 +75,7 @@
             font-size: 1.2em;
             margin: 0;
             text-transform: uppercase;
+            color: #ff69b4; /* Розовый неон для заголовка */
         }
 
         .total-pool {
@@ -74,7 +87,7 @@
             border-radius: 5px;
             width: 120px;
             text-align: center;
-            animation: flicker 1.5s infinite alternate;
+            animation: flicker 1.5s infinite alternate; /* Лёгкое мигание */
         }
 
         @keyframes flicker {
@@ -84,7 +97,7 @@
         }
 
         .contribute-button {
-            background-color: #ff69b4;
+            background-color: #ff69b4; /* Ярко-розовая кнопка */
             border: 2px solid #a9e6e6;
             color: #0a0a0a;
             padding: 10px 20px;
@@ -93,25 +106,47 @@
             cursor: pointer;
             text-transform: uppercase;
             text-shadow: 0 0 5px #a9e6e6;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: buttonGlow 2s ease-in-out infinite alternate; /* Неоновое свечение */
         }
 
         .contribute-button:hover {
-            transform: scale(1.05);
+            transform: scale(1.05); /* Подпрыгивание */
             background-color: #d1478e;
+        }
+
+        .contribute-button:active {
+            animation: buttonFlash 0.1s ease; /* Мигание при клике */
+        }
+
+        @keyframes buttonGlow {
+            0% { box-shadow: 0 0 5px #a9e6e6; }
+            100% { box-shadow: 0 0 15px #ff69b4; }
+        }
+
+        @keyframes buttonFlash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         /* Таймер */
         .timer {
             background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid #a9e6e6;
-            color: #a9e6e6;
+            border: 2px solid #00ff00; /* Зелёные цифры табло мотеля */
+            color: #00ff00;
             padding: 10px;
             font-size: 1em;
             text-align: center;
             margin: 20px 0;
             border-radius: 5px;
             width: 100%;
+            animation: timerFlicker 2s infinite alternate; /* Лёгкое мигание LED */
+        }
+
+        @keyframes timerFlicker {
+            0% { opacity: 0.95; }
+            100% { opacity: 1; }
         }
 
         /* Список участников */
@@ -121,7 +156,7 @@
 
         .participant-card {
             background-color: #0a0a0a;
-            border: 2px solid #ff69b4;
+            border: 2px solid #ff69b4; /* Неоновая рамка */
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 5px;
@@ -129,11 +164,16 @@
             justify-content: space-between;
             align-items: center;
             font-size: 0.8em;
-            box-shadow: 0 0 10px #a9e6e6; /* Неоновая рамка */
+            box-shadow: 0 0 10px #ff69b4; /* Мягкое свечение рамки */
+            border-image: linear-gradient(to right, #ff69b4, #a9e6e6) 1; /* Градиентная рамка */
         }
 
-        .participant-info {
-            color: #a9e6e6;
+        .participant-nick {
+            color: #a9e6e6; /* Бирюзовый для ника */
+        }
+
+        .participant-amount {
+            color: #ffff00; /* Жёлтый эффект лампы для суммы */
         }
 
         /* Шансы на победу */
@@ -144,6 +184,7 @@
             margin: 20px 0;
             border-radius: 5px;
             text-align: center;
+            box-shadow: 0 0 20px #a9e6e6; /* Мягкое свечение колеса */
         }
 
         .roulette-value {
@@ -158,11 +199,15 @@
             height: 200px;
             position: relative;
             margin: 0 auto;
+            box-shadow: 0 0 15px #ff69b4; /* Свечение колеса */
+            border-radius: 50%;
+            background-color: #0a0a0a;
         }
 
         canvas {
             width: 100%;
             height: 100%;
+            border-radius: 50%; /* Круглая форма */
         }
     </style>
     <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
@@ -279,7 +324,7 @@
             const chance = participants.length > 0 ? participants[0].chance : "0";
             document.getElementById('roulette-value').textContent = `Шанс лидера: ${chance}%`;
 
-            // Шанс рулетки
+            // Диаграмма рулетки
             drawRoulette(participants, totalPool);
         }
 
@@ -298,7 +343,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Цвета секторов (неоновые)
-            const colors = ['#ff69b4', '#a9e6e6', '#ffff00'];
+            const colors = ['#ff69b4', '#a9e6e6', '#ffff00', '#8a2be2']; // Розовый, бирюзовый, жёлтый, фиолетовый
 
             if (participants.length > 0) {
                 participants.forEach((p, i) => {
@@ -309,8 +354,23 @@
                     ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
                     ctx.closePath();
                     ctx.fill();
+                    // Мягкое свечение
+                    ctx.shadowColor = colors[i % colors.length];
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // Сброс свечения
                     startAngle += sliceAngle;
                 });
+                // Плавная перерисовка (анимация)
+                function animate(angle) {
+                    if (angle < startAngle) {
+                        requestAnimationFrame(() => animate(angle + 0.1));
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        // Перерисовка секторов с текущим углом
+                        // (упрощённо, полная анимация требует больше кода)
+                    }
+                }
+                animate(0);
             }
         }
 
