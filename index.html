@@ -25,13 +25,14 @@
         setInterval(() => {
             document.getElementById('slot').innerText = symbols[Math.floor(Math.random() * 4)];
         }, 100);
-        // Таймер (пример)
+        // Таймер
         let timeLeft = 900;  // 15 мин в сек
         setInterval(() => {
             let min = Math.floor(timeLeft / 60);
             let sec = timeLeft % 60;
             document.getElementById('timer').innerText = `До розыгрыша: ${min}:${sec.toString().padStart(2, '0')}`;
             timeLeft--;
+            if (timeLeft <= 0) timeLeft = 900;
         }, 1000);
     </script>
 </body>
