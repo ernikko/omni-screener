@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>POOL / Бассейн</title>
   <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     /*
      * 1995 LA Vibe: 2D Noir / Synthwave / Phonk
@@ -192,7 +193,6 @@
     .modal .row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .btn { padding:10px 12px; cursor:pointer; border:none; font-family: 'Press Start 2P', monospace; font-size:0.7rem;}
     .btn-copy{ background:var(--neon-cyan); color:#111; box-shadow:0 0 6px var(--neon-cyan); }
-    .btn-open{ background:var(--neon-magenta); color:#111; box-shadow:0 0 6px var(--neon-magenta); }
     .btn-close{ background:#222;color:#fff; border:1px solid #444; }
 
   </style>
@@ -222,12 +222,11 @@
 
   <div id="modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal">
-      <h4>Трансфер USDT (TON)</h4>
-      <div>Если ссылка не сработала (вылет), переведите минимум <strong>0.15 USDT</strong на адрес ниже:</div>
+      <h4>Автоматический перевод не сработал</h4>
+      <div>Пожалуйста, переведите минимум <strong>0.15 USDT (TON)</strong> на адрес ниже.</div>
       <div id="addr" class="address-box"></div>
       <div class="row">
         <button id="copyBtn" class="btn btn-copy">Копировать адрес</button>
-        <button id="openBtn" class="btn btn-open">Открыть ссылку</button>
         <button id="closeModal" class="btn btn-close">Закрыть</button>
       </div>
     </div>
@@ -241,52 +240,70 @@
     let poolStarted = false;
     let timeLeft = 900; // 15 мин
     const MIN_AMOUNT = 0.15;
-    // Адрес для TON
-    const YOUR_ADDRESS = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC"; 
+    // ВАЖНО: ЭТОТ АДРЕС ВЫ ДОЛЖНЫ ИСПРАВИТЬ В bot.py и ЗДЕСЬ
+    const YOUR_ADDRESS = "EQC47n_s4qQ2-B0tM0D170J8qg529P7vH29Yw37z0X_75r"; // <-- ПРИМЕР! ЗАМЕНИТЕ НА СВОЙ EQ/UQ АДРЕС
 
     /***********************
      * UI ЭЛЕМЕНТЫ
      ***********************/
     const totalInput = document.getElementById('total-pool');
-    const participantsList = document.getElementById('participants-list');
-    const rouletteValue = document.getElementById('roulette-value');
     const contributeBtn = document.getElementById('contributeBtn');
-    const canvas = document.getElementById('roulette-canvas');
     const modalBackdrop = document.getElementById('modal-backdrop');
     const addrBox = document.getElementById('addr');
     const copyBtn = document.getElementById('copyBtn');
-    const openBtn = document.getElementById('openBtn');
     const closeModal = document.getElementById('closeModal');
+    
+    // Получаем Telegram User ID, если Web App загрузился
+    let telegramUserId = 0;
+    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+        telegramUserId = Telegram.WebApp.initDataUnsafe.user.id;
+    }
 
     /***********************
-     * КНОПКА ВНЕСТИ ПУЛ (ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ)
+     * КНОПКА ВНЕСТИ ПУЛ (С ИСПОЛЬЗОВАНИЕМ TELEGRAM.WebApp.openLink)
      ***********************/
-    function showFallbackModal(address, tonLink){
+    function showFallbackModal(address){
       addrBox.textContent = address;
       modalBackdrop.style.display = 'flex';
       copyBtn.onclick = async () => {
-        try { await navigator.clipboard.writeText(address); copyBtn.textContent = "СКОПИРОВАНО"; setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); }
-        catch(e){ copyBtn.textContent="ОШИБКА"; setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); }
-      };
-      openBtn.onclick = () => { 
-        // Если кнопка "Открыть ссылку" в модале тоже вызывает вылет, 
-        // это уже проблема Telegram/устройства, но это последний шанс открыть.
-        window.open(tonLink, '_blank'); 
+        try { 
+          await navigator.clipboard.writeText(address); 
+          copyBtn.textContent = "СКОПИРОВАНО"; 
+          setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); 
+        }
+        catch(e){ 
+          copyBtn.textContent="ОШИБКА"; 
+          setTimeout(()=>copyBtn.textContent="Копировать адрес",1300); 
+        }
       };
       closeModal.onclick = () => modalBackdrop.style.display = 'none';
     }
 
     function contribute(){
-      const amountNano = 150000000;
-      const tonLink = `ton://transfer/${YOUR_ADDRESS}?amount=${amountNano}`;
+      // Минимальная сумма 0.15 USDT (в нано-TON это 150 000 000)
+      const amountNano = 150000000; 
       
-      // ИСПРАВЛЕНИЕ: Мы не вызываем Telegram.WebApp.openLink() напрямую, 
-      // чтобы избежать вылета. Сразу показываем модал.
-      showFallbackModal(YOUR_ADDRESS, tonLink);
+      // КОММЕНТАРИЙ: Здесь мы передаем ID пользователя. 
+      // Бот будет искать транзакции с этим комментарием.
+      const comment = "pool-id-" + telegramUserId; 
+      
+      // Формируем Deeplink. Param 'text' используется как комментарий/сообщение.
+      // Кодируем комментарий для URL.
+      const tonLink = `ton://transfer/${YOUR_ADDRESS}?amount=${amountNano}&text=${encodeURIComponent(comment)}`;
+
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+        // Надежный метод Telegram Web App
+        Telegram.WebApp.openLink(tonLink);
+      } else {
+        // Фальбэк, если Telegram Web App не загрузился (показываем модал с адресом)
+        showFallbackModal(YOUR_ADDRESS);
+      }
     }
 
     contributeBtn.addEventListener('click', contribute);
 
+    // ... (Остальной код (Таймер, Рендер, Рулетка) остается без изменений, но его нужно добавить в ваш index.html)
+    
     /***********************
      * ТАЙМЕР
      ***********************/
@@ -310,15 +327,14 @@
     /***********************
      * ОБНОВЛЕНИЕ УЧАСТНИКОВ (МОК-ДАННЫЕ, ЗАМЕНИТЬ НА FETCH)
      ***********************/
-    function setParticipantsFromServer(dataArray, newTimeLeft, newPoolStart){
-      // Здесь должна быть ваша логика обновления данных с сервера
-    }
-    
     // Вспомогательная функция для безопасности
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 
     function renderParticipants(){
+      const participantsList = document.getElementById('participants-list');
+      const rouletteValue = document.getElementById('roulette-value');
+      
       participantsList.innerHTML = '';
       const total = participantsData.reduce((s,p)=>s+p.amount,0);
       totalInput.value = `${total.toFixed(2)} USDT`;
@@ -355,104 +371,94 @@
       rouletteValue.textContent = `Шанс лидера: ${participantsData[0].chance}%`;
       drawRoulette(participantsData, total);
     }
-
+    
+    // ... (Функция drawRoulette и resizeCanvasForHiDPI также должны быть в index.html, но для краткости не дублирую их здесь, они были в предыдущем ответе.)
+    
     /***********************
      * РИСОВАНИЕ РУЛЕТКИ (NEON DIAGRAM)
      ***********************/
     function resizeCanvasForHiDPI(c){
-      const dpr = window.devicePixelRatio || 1;
-      const rect = c.getBoundingClientRect();
-      c.width = Math.round(rect.width * dpr);
-      c.height = Math.round(rect.height * dpr);
-      const ctx = c.getContext('2d');
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-      return ctx;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = c.getBoundingClientRect();
+        c.width = Math.round(rect.width * dpr);
+        c.height = Math.round(rect.height * dpr);
+        const ctx = c.getContext('2d');
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        return ctx;
     }
 
     function drawRoulette(participants, totalPool){
-      const ctx = resizeCanvasForHiDPI(canvas);
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      const cx = w/2, cy = h/2, radius = Math.min(w,h)/2 - 4;
+        const canvas = document.getElementById('roulette-canvas');
+        const ctx = resizeCanvasForHiDPI(canvas);
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        const cx = w/2, cy = h/2, radius = Math.min(w,h)/2 - 4;
 
-      ctx.clearRect(0,0,w,h);
+        ctx.clearRect(0,0,w,h);
 
-      if (!participants || participants.length===0 || totalPool <= 0){
+        if (!participants || participants.length===0 || totalPool <= 0){
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.arc(cx,cy,radius,0,Math.PI*2);
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(0,255,255,0.1)';
+            ctx.stroke();
+            return;
+        }
+
+        const colors = [
+            '#FF00FF', '#00FFFF', '#FFFF00', '#00FF7F', '#FF69B4', '#00BFFF'
+        ];
+
+        let start = -Math.PI/2;
+        for (let i=0;i<participants.length;i++){
+            const p = participants[i];
+            const angle = (p.amount/totalPool) * Math.PI * 2;
+            const color = colors[i % colors.length];
+            
+            ctx.beginPath();
+            ctx.moveTo(cx,cy);
+            ctx.arc(cx,cy,radius,start,start+angle);
+            ctx.closePath();
+            
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 18;
+            
+            ctx.fill();
+            ctx.shadowBlur = 0; 
+
+            start += angle;
+        }
+
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.arc(cx,cy,radius,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.arc(cx, cy, radius*0.4, 0, Math.PI*2);
         ctx.fill();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'rgba(0,255,255,0.1)';
+
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,0,255,0.3)';
+        ctx.shadowColor = '#FF00FF';
+        ctx.shadowBlur = 10;
         ctx.stroke();
-        return;
-      }
+        ctx.shadowBlur = 0;
 
-      // Неоновые цвета
-      const colors = [
-          '#FF00FF', /* Magenta */
-          '#00FFFF', /* Cyan */
-          '#FFFF00', /* Yellow */
-          '#00FF7F', /* Green */
-          '#FF69B4', /* Light Pink */
-          '#00BFFF'  /* Deep Blue */
-      ];
-
-      let start = -Math.PI/2;
-      for (let i=0;i<participants.length;i++){
-        const p = participants[i];
-        const angle = (p.amount/totalPool) * Math.PI * 2;
-        const color = colors[i % colors.length];
+        ctx.fillStyle = '#E0E0E0';
+        ctx.font = '400 0.6rem "Press Start 2P"';
+        ctx.textAlign = 'center';
         
-        ctx.beginPath();
-        ctx.moveTo(cx,cy);
-        ctx.arc(cx,cy,radius,start,start+angle);
-        ctx.closePath();
+        const leader = participants[0];
         
-        ctx.fillStyle = color;
-        
-        // Усиление неонового свечения
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 18;
-        
-        ctx.fill();
-        ctx.shadowBlur = 0; // Сброс тени для следующего элемента
-
-        start += angle;
-      }
-
-      // Внутренний круг (центральная зона)
-      ctx.beginPath();
-      ctx.fillStyle = 'rgba(0,0,0,0.85)';
-      ctx.arc(cx, cy, radius*0.4, 0, Math.PI*2);
-      ctx.fill();
-
-      // Внешняя тонкая неоновая рамка
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255,0,255,0.3)';
-      ctx.shadowColor = '#FF00FF';
-      ctx.shadowBlur = 10;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Подписи в центре
-      ctx.fillStyle = '#E0E0E0';
-      ctx.font = '400 0.6rem "Press Start 2P"';
-      ctx.textAlign = 'center';
-      
-      const leader = participants[0];
-      
-      ctx.fillText('СЕТКА ШАНСОВ', cx, cy - 8);
-      ctx.fillStyle = '#FFFF00';
-      ctx.fillText(`${leader.id}: ${leader.chance}%`, cx, cy + 12);
+        ctx.fillText('СЕТКА ШАНСОВ', cx, cy - 8);
+        ctx.fillStyle = '#FFFF00';
+        ctx.fillText(`${leader.id}: ${leader.chance}%`, cx, cy + 12);
     }
-
+    
     /***********************
      * ЦИКЛ ОБНОВЛЕНИЯ (МОК-ДАННЫЕ)
      ***********************/
     function fetchAndApplyMock(){
-      // Эту функцию замените на fetch('/update') к вашему backend
       if (participantsData.length === 0) {
-        // мок-данные для демонстрации
         participantsData = [
           {id:'NeonKid', amount:0.30},
           {id:'PoolGirl', amount:0.15},
@@ -464,7 +470,7 @@
     }
 
     // Обновляем таймер каждую секунду
-    setInterval(updateTimer, 1000);
+    setInterval(()=>updateTimer(), 1000);
 
     // Обновление данных (имитация fetch) раз в 2 секунды
     setInterval(()=>{
@@ -487,6 +493,7 @@
         console.error('Telegram SDK initialization failed:', e);
       }
     }
+
   </script>
 </body>
 </html>
