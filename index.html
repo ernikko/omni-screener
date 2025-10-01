@@ -19,9 +19,9 @@
                 linear-gradient(rgba(169, 214, 223, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(169, 214, 223, 0.05) 1px, transparent 1px);
             background-size: 20px 20px;
-            display: flex; /* Используем flexbox */
-            flex-direction: column;
-            align-items: center; /* Центрируем по горизонтали */
+            display: flex;
+            justify-content: center; /* Центрирование контейнера по горизонтали */
+            align-items: flex-start; /* Выравнивание по верхнему краю */
         }
 
         .neon {
@@ -29,11 +29,12 @@
             color: #a9d6df;
         }
 
-        /* Контейнер для элементов */
+        /* Контейнер для всего контента */
         .container {
-            max-width: 280px; /* Ограничение ширины */
-            width: 100%;
-            margin: 0 auto; /* Центрирование */
+            max-width: 320px; /* Фиксированная максимальная ширина */
+            width: 100%; /* Занимает доступное пространство до max-width */
+            margin: 0 auto; /* Равные отступы слева и справа */
+            padding: 0 20px; /* Внутренние отступы для элементов внутри контейнера */
         }
 
         /* Верхняя панель */
@@ -43,7 +44,7 @@
             text-align: center;
             border-bottom: 1px solid #a9d6df;
             width: 100%;
-            margin: 20px 0; /* Отступы сверху и снизу */
+            margin: 20px 0; /* Вертикальные отступы */
         }
 
         .title {
@@ -88,7 +89,7 @@
             padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 20px auto; /* Центрирование с отступами */
+            margin: 20px 0; /* Вертикальные отступы */
             border-radius: 3px;
             width: 100%;
             box-sizing: border-box;
@@ -96,7 +97,7 @@
 
         /* Таблица участников */
         .table-container {
-            margin: 20px auto; /* Центрирование с отступами */
+            margin: 20px 0; /* Вертикальные отступы */
             width: 100%;
         }
 
@@ -107,11 +108,11 @@
             border: 1px solid #a9d6df;
             border-radius: 3px;
             width: 100%;
+            text-align: center; /* Выравнивание текста по центру */
         }
 
         th, td {
             padding: 5px;
-            text-align: center; /* Выравнивание текста по центру */
             border-bottom: 1px solid #a9d6df;
             font-size: 0.7em;
         }
