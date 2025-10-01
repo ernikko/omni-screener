@@ -6,7 +6,7 @@
     <title>Бассейн / POOL</title>
     <style>
         body {
-            background-color: #1c2526; /* Тёмный фон с мягким оттенком */
+            background-color: #1c2526; /* Тёмный фон с оттенком 90-х */
             color: #a9d6df; /* Мягкий голубой для читаемости */
             font-family: 'Press Start 2P', monospace; /* Пиксельный шрифт */
             margin: 0;
@@ -78,15 +78,16 @@
             padding: 5px;
             font-size: 1em;
             text-align: center;
-            margin: 10px 0;
+            margin: 10px auto;
             border-radius: 3px;
-            width: 100%;
+            max-width: 280px; /* Пространство по бокам */
             box-sizing: border-box;
         }
 
         /* Таблица участников */
         .table-container {
-            margin: 10px;
+            margin: 10px auto; /* Центрирование */
+            max-width: 280px; /* Пространство по бокам */
             width: 100%;
         }
 
@@ -122,7 +123,7 @@
     <div class="top-panel">
         <h2 class="title neon">Бассейн / POOL</h2>
         <input type="text" class="total-pool" id="total-pool" value="0.00 USDT" readonly>
-        <button class="contribute-button" onclick="contribute()">Внести 0.15 USDT</button>
+        <button class="contribute-button" onclick="contribute()">Внести в пул</button>
     </div>
 
     <!-- Таймер -->
@@ -166,7 +167,7 @@
             }
         }
 
-        // Функция для вклада
+        // Функция для вклада (минимум 0.15 USDT)
         function contribute() {
             const address = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC";
             const amount = 0.15 * 1e9; // 0.15 USDT в наноTON
