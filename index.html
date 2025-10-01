@@ -30,7 +30,7 @@
       overflow-x:hidden; overflow-y:auto;
       position:relative;
       min-height:100vh;
-      /* Смешанный неоновый фон, имитирующий отражение воды */
+      /* Неоновый фон, имитирующий отражение воды */
       background-image:
         radial-gradient(circle at 50% 80%, rgba(7,7,15,1) 50%, rgba(255,0,255,0.05) 80%),
         linear-gradient(to bottom, rgba(0,255,255,0.08) 0%, transparent 50%),
@@ -45,8 +45,9 @@
       top: 0; left: 0; right: 0; bottom: 0;
       pointer-events: none;
       z-index: 1000;
+      /* Очень мелкое зерно */
       background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAGCAYAAADgzO9IAAAASklEQVQIW2NkgABGSgU4/99/Q88ZgYg/g/D/f+P/f38+MjCwF+rGABi4wAkgv+3lRjV/g7I/A8n///1/YQ1A/4tQ5QBgYABRgwBGSAGqY8d5YAAAAABJRU5ErkJggg==');
-      opacity: 0.05; /* Очень тонкий эффект */
+      opacity: 0.05; 
     }
 
     .container{
@@ -62,9 +63,9 @@
       padding:12px;
       background: rgba(0,0,0,0.6);
       border: 2px solid var(--neon-magenta);
-      border-radius:0; /* Убираем скругление для 2D Noir */
       margin-bottom:14px;
-      box-shadow: 0 0 16px rgba(255,0,255,0.4); /* Сильное неоновое свечение */
+      /* Неоновое свечение */
+      box-shadow: 0 0 16px rgba(255,0,255,0.4); 
       animation: neonPulse 3s infinite alternate;
     }
 
@@ -91,14 +92,14 @@
       padding:8px 10px;
       font-size:0.75rem;
       text-align:center;
-      flex:1 1 50%; /* Четкое разделение */
+      flex:1 1 50%; 
       box-shadow: 0 0 8px rgba(0,255,127,0.5);
     }
 
     .contribute-button{
       background: var(--neon-magenta);
       border:2px solid var(--neon-cyan);
-      color:var(--bg); /* Темный текст на светлом неоновом фоне */
+      color:var(--bg); 
       padding:10px 12px;
       cursor:pointer;
       font-size:0.75rem;
@@ -115,7 +116,7 @@
       100% { box-shadow: 0 0 20px rgba(255,0,255,0.6), 0 0 12px rgba(0,255,255,0.3); }
     }
 
-    /* ========== Таймер ========== */
+    /* ========== Таймер (HUD Style) ========== */
     .timer{
       background: rgba(0,0,0,0.6);
       border:3px solid var(--neon-green);
@@ -129,7 +130,7 @@
     }
     @keyframes timerFlicker { 0%{opacity:.95; text-shadow:none;} 100%{opacity:1; text-shadow:0 0 6px var(--neon-green);} }
 
-    /* ========== Список участников (The Roster) ========== */
+    /* ========== Список участников ========== */
     .participants{ margin: 12px 0; display:block; }
     .participant-card{
       display:flex; justify-content:space-between; align-items:center;
@@ -177,8 +178,8 @@
         height:100%;
     }
 
-    /* ========== МОДАЛ ФАЛЬБЭК ========== */
-    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    /* ========== МОДАЛ ФАЛЬБЭК (Noir Overlay) ========== */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.95); display:flex; align-items:center; justify-content:center; z-index:9999; }
     .modal {
       background: #111; border-radius:0; padding:18px;
       width: min(340px, calc(100% - 32px));
@@ -240,7 +241,8 @@
     let poolStarted = false;
     let timeLeft = 900; // 15 мин
     const MIN_AMOUNT = 0.15;
-    const YOUR_ADDRESS = "9jLobehHPLF5mhNfjwGEPv5w2qRyQqz1bghzDzTtggC";
+    // Адрес для TON
+    const YOUR_ADDRESS = "9jLobehHPLF5mhNfjwGEPv5w2qRyXQqz1bghzDzTtggC"; 
 
     /***********************
      * UI ЭЛЕМЕНТЫ
@@ -271,7 +273,9 @@
     }
 
     function contribute(){
+      // Минимальная сумма 0.15 USDT в nano-TON (150 миллионов)
       const amountNano = 150000000;
+      // Deeplink для кошелька TON
       const tonLink = `ton://transfer/${YOUR_ADDRESS}?amount=${amountNano}`;
       
       let linkOpened = false;
@@ -279,8 +283,6 @@
       // 1. Попытка через Telegram WebApp openLink (самый надежный способ)
       if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === 'function') {
         try {
-          // openLink может вернуть false, если не смог открыть. 
-          // Проверяем Telegram.WebApp.isTWA (не всегда доступно), но openLink сам по себе достаточно надежен.
           Telegram.WebApp.openLink(tonLink); 
           linkOpened = true; 
         } catch(e) {
@@ -288,16 +290,16 @@
         }
       }
 
-      // 2. Если openLink не сработал или недоступен (например, в десктопной версии или браузере)
+      // 2. Если openLink не сработал или недоступен (например, в браузере или на десктопе)
       if (!linkOpened) {
-          // Попытка открыть через window.open
           const newWindow = window.open(tonLink, '_blank');
           if (newWindow) {
               linkOpened = true;
           }
       }
 
-      // 3. Финальный Fallback: если ничего не сработало или вызвало вылет, показываем модал
+      // 3. Финальный Fallback: если ничего не сработало, показываем модал
+      // Эта логика предотвращает вылет приложения в 99% случаев
       if (!linkOpened) {
           showFallbackModal(YOUR_ADDRESS, tonLink);
       }
@@ -313,11 +315,12 @@
       if (poolStarted) {
         const m = Math.floor(timeLeft / 60);
         const s = timeLeft % 60;
-        el.innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        el.innerText = `ДО РОЗЫГРЫША: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
         timeLeft--;
         if (timeLeft <= 0) {
           poolStarted = false;
           timeLeft = 900;
+          el.innerText = "ПУЛ ЗАВЕРШЕН";
         }
       } else {
         el.innerText = "ОЖИДАНИЕ СТАРТА";
@@ -325,12 +328,10 @@
     }
 
     /***********************
-     * ОБНОВЛЕНИЕ УЧАСТНИКОВ
+     * ОБНОВЛЕНИЕ УЧАСТНИКОВ (МОК-ДАННЫЕ, ЗАМЕНИТЬ НА FETCH)
      ***********************/
-    function setParticipantsFromServer(dataArray){
-      participantsData = Array.isArray(dataArray) ? dataArray.slice() : [];
-      if (participantsData.length>0 && !poolStarted) poolStarted = true;
-      renderParticipants();
+    function setParticipantsFromServer(dataArray, newTimeLeft, newPoolStart){
+      // ... здесь должна быть ваша логика обновления данных с сервера
     }
     
     // Вспомогательная функция для безопасности
@@ -347,18 +348,14 @@
         return;
       }
 
-      // Расчет шансов и поправка
+      // Расчет шансов 
       let totalChance = 0;
       participantsData.forEach(p => {
         p.chance = +( (p.amount/total)*100 ).toFixed(1);
         totalChance += p.chance;
       });
-      const diff = +(100 - totalChance).toFixed(1);
-      if (participantsData.length>0 && Math.abs(diff) >= 0.1) {
-        participantsData[0].chance = +(parseFloat(participantsData[0].chance) + diff).toFixed(1);
-      }
-
-      // Сортировка
+      
+      // Сортировка для определения лидера
       participantsData.sort((a,b)=>b.amount - a.amount);
 
       // Рендер карточек
@@ -397,7 +394,6 @@
       const w = canvas.clientWidth, h = canvas.clientHeight;
       const cx = w/2, cy = h/2, radius = Math.min(w,h)/2 - 4;
 
-      // clear
       ctx.clearRect(0,0,w,h);
 
       if (!participants || participants.length===0 || totalPool <= 0){
@@ -471,9 +467,10 @@
     }
 
     /***********************
-     * ЦИКЛ ОБНОВЛЕНИЯ
+     * ЦИКЛ ОБНОВЛЕНИЯ (МОК-ДАННЫЕ)
      ***********************/
     function fetchAndApplyMock(){
+      // Эту функцию замените на fetch('/update') к вашему backend
       if (participantsData.length === 0) {
         // мок-данные для демонстрации
         participantsData = [
@@ -489,9 +486,8 @@
     // Обновляем таймер каждую секунду
     setInterval(updateTimer, 1000);
 
-    // Данные (fetch) раз в 2 секунды
+    // Обновление данных (имитация fetch) раз в 2 секунды
     setInterval(()=>{
-      // ЗДЕСЬ ДОЛЖЕН БЫТЬ ВАШ РЕАЛЬНЫЙ FETCH К СЕРВЕРУ
       fetchAndApplyMock(); 
     }, 2000);
 
@@ -502,7 +498,7 @@
     // ресайз canvas при изменении размеров окна
     window.addEventListener('resize', ()=> drawRoulette(participantsData, participantsData.reduce((s,p)=>s+p.amount,0)) );
 
-    // Telegram WebApp ready (очень важный блок)
+    // Telegram WebApp ready
     if (window.Telegram && Telegram.WebApp) {
       try { 
         Telegram.WebApp.ready(); 
